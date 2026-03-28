@@ -11,6 +11,7 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Backpack = LocalPlayer:WaitForChild("Backpack")
 local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
 local Remotes = ReplicatedStorage:WaitForChild("DuelRemotes", 30)
 if not Remotes then error("DuelRemotes not found") end
 local RE_BattleStart = Remotes:WaitForChild("BattleStart")
@@ -600,7 +601,6 @@ openBook()
 end
 end
 local function castSpell(spellName)
-if not isInDuel then return end
 if spellOnCD[spellName] then return end
 local char = LocalPlayer.Character
 if not char then return end
@@ -623,7 +623,8 @@ end
 if not sp then return end
 animateWand(sp.animType)
 spellOnCD[spellName] = true
-RE_CastSpell:FireServer(spellName)
+local targetPos = Mouse and Mouse.Hit and Mouse.Hit.Position or nil
+RE_CastSpell:FireServer(spellName, targetPos)
 updateSpellCooldown(spellName, sp.cd)
 task.spawn(function()
 local endT = tick() + sp.cd
@@ -817,6 +818,32 @@ end)
 end
 end
 --===========================================================
+-- TEAM + DEATHS HUD (Co-op)
+--===========================================================
+local teamWrap = mF(sg, UDim2.new(0,260,0,64), UDim2.new(0,14,1,-142), Color3.fromRGB(8,8,18), 0.15, 22)
+corner(teamWrap, 0.18)
+stroke(teamWrap, Color3.fromRGB(80,170,255), 1.5)
+grad(teamWrap, Color3.fromRGB(15,20,35), Color3.fromRGB(6,8,18))
+local teamLabel = mL(teamWrap, "👥 EQUIPO: MAGOS DEL CASTILLO", UDim2.new(1,-12,0,24), UDim2.new(0,8,0,4), Color3.fromRGB(180,220,255), Enum.Font.GothamBold, 23, false)
+teamLabel.TextXAlignment = Enum.TextXAlignment.Left
+teamLabel.TextScaled = true
+local deathsLabel = mL(teamWrap, "☠ Muertes: 0", UDim2.new(1,-12,0,24), UDim2.new(0,8,0,34), Color3.fromRGB(255,215,95), Enum.Font.GothamBlack, 23, false)
+deathsLabel.TextXAlignment = Enum.TextXAlignment.Left
+deathsLabel.TextScaled = true
+local function updateDeathsHUD()
+local ls = LocalPlayer:FindFirstChild("leaderstats")
+local kv = ls and ls:FindFirstChild("Kills")
+deathsLabel.Text = "☠ Muertes: " .. tostring((kv and kv.Value) or 0)
+end
+task.spawn(function()
+local ls = LocalPlayer:WaitForChild("leaderstats", 20)
+if ls then
+local kv = ls:WaitForChild("Kills", 20)
+if kv then kv:GetPropertyChangedSignal("Value"):Connect(updateDeathsHUD) end
+end
+updateDeathsHUD()
+end)
+--===========================================================
 -- HUD
 --===========================================================
 local hudWrap = mF(sg, UDim2.new(0,520,0,96), UDim2.new(0.5,-260,0,6), Color3.fromRGB(3,1,12), 0.15, 18)
@@ -941,7 +968,7 @@ hide.Completed:Wait()
 annBg.Visible = false
 fadeBlack(1, 0.5)
 isInDuel = true
-hudWrap.Visible = true
+hudWrap.Visible = false
 hpWrap.Visible = true
 bookTriggerWrap.Visible = true
 spellOnCD = {}
@@ -978,7 +1005,7 @@ RE_BattleEnd.OnClientEvent:Connect(function(winnerName, isWinner)
 isInDuel = false
 spellOnCD = {}
 hudWrap.Visible = false
-hpWrap.Visible = false
+hpWrap.Visible = true
 bookTriggerWrap.Visible = false
 cdWrap.Visible = false
 resWrap.Visible = false
@@ -1060,7 +1087,7 @@ end
 end
 end)
 LocalPlayer.CharacterAdded:Connect(function()
-isInDuel = false
+isInDuel = true
 spellOnCD = {}
 hudWrap.Visible = false
 hpWrap.Visible = false
@@ -1071,5 +1098,9 @@ annBg.Visible = false
 blackScreen.BackgroundTransparency = 1
 closeBook()
 task.wait(0.25)
+bookTriggerWrap.Visible = true
 end)
+bookTriggerWrap.Visible = true
+hpWrap.Visible = true
+isInDuel = true
 print("⚡ [DuelGame v12.0] LocalScript loaded — Spellbook fixed, casting fixed, UI resized ⚡")
