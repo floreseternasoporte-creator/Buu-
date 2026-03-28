@@ -743,9 +743,9 @@ RE_CastSpell.OnServerEvent:Connect(function(caster, spellName, targetPos)
         return
     end
 
-    local arenaIdx = duelInfo.arenaIdx
-    local opponent = duelInfo.opponent
-    if not opponent or not playerDuel[opponent] then return end
+    if targetPos and typeof(targetPos) ~= "Vector3" then
+        targetPos = nil
+    end
 
     local now = os.clock()
     local oppPending = pendingCast[opponent]
