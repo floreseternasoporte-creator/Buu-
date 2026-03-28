@@ -1,7 +1,3 @@
---===========================================================
--- ⚡ HARRY POTTER DUELING GAME - SERVER SCRIPT v11.0 ⚡
--- Coloca en: ServerScriptService > Script
---===========================================================
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,9 +6,6 @@ local RunService        = game:GetService("RunService")
 local DataStoreService  = game:GetService("DataStoreService")
 local TweenService      = game:GetService("TweenService")
 
---===========================================================
--- CONFIG
---===========================================================
 local LOBBY_SPAWN   = Vector3.new(0, 6, 0)
 local PLAYER_HEALTH = 100
 local ROUND_TIME    = 60
@@ -21,7 +14,6 @@ local TOTAL_ROUNDS  = 3
 local CLASH_WINDOW = 0.30
 local WINDUP       = 0.16
 
--- SFX IDs
 local SFX_CAST   = "rbxassetid://139822052056984"
 local SFX_DEATH  = "rbxassetid://120717906835357"
 local SFX_HIT    = "rbxassetid://5982271945"
@@ -29,9 +21,6 @@ local SFX_CLASH  = "rbxassetid://6518811702"
 local SFX_AVADA  = "rbxassetid://6026980735"
 local SFX_EXPELL = "rbxassetid://6026982406"
 
---===========================================================
--- SPELLS (nuevos hechizos auténticos de Harry Potter)
---===========================================================
 local SPELL_DATA = {
     Expelliarmus = {
         damage   = 30,  power  = 30, speed = 70, cdKey = "Expelliarmus",
@@ -112,9 +101,6 @@ local SPELL_DATA = {
     },
 }
 
---===========================================================
--- HOUSES & LAYOUT
---===========================================================
 local HOUSES = {
     { name = "Gryffindor", primary = "Crimson",       neon = Color3.fromRGB(180,20,20)  },
     { name = "Slytherin",  primary = "Bright green",  neon = Color3.fromRGB(0,160,60)   },
@@ -134,15 +120,9 @@ local ARENA_CENTERS = {
     Vector3.new(0,5,600), Vector3.new(0,5,740),
 }
 
---===========================================================
--- DATA STORES
---===========================================================
 local KillsStore   = DataStoreService:GetDataStore("DuelKills_v11")
 local KillsOrdered = DataStoreService:GetOrderedDataStore("DuelKillsRank_v11")
 
---===========================================================
--- REMOTES
---===========================================================
 local Remotes = ReplicatedStorage:FindFirstChild("DuelRemotes")
 if not Remotes then
     Remotes = Instance.new("Folder"); Remotes.Name = "DuelRemotes"; Remotes.Parent = ReplicatedStorage
@@ -165,9 +145,6 @@ local RE_RoundUpdate  = makeRemote("RoundUpdate")
 local RE_SpellEffect  = makeRemote("SpellEffect")
 local RE_ClashUpdate  = makeRemote("ClashUpdate")
 
---===========================================================
--- STATE
---===========================================================
 local squares     = {}
 local squareParts = {}
 local padStations = {}
@@ -185,9 +162,6 @@ for i = 1, 4 do
     squares[i] = { players = {}, inBattle = false, countdown = false }
 end
 
---===========================================================
--- HELPERS: WORLD BUILDING
---===========================================================
 local function makePart(name, size, cf, color, material, parent, canCollide, anchored)
     local p = Instance.new("Part")
     p.Name = name; p.Size = size; p.CFrame = cf
@@ -271,9 +245,6 @@ local function createFlyingCandle(position, parent)
     return candle
 end
 
---===========================================================
--- GAMEPLAY HELPERS
---===========================================================
 local function playSoundAt(char, id, vol)
     if not char then return end
     local p = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head")
@@ -348,9 +319,6 @@ local function saveKills(player)
     pcall(function() KillsOrdered:SetAsync(uid, kills) end)
 end
 
---===========================================================
--- WAND CREATION
---===========================================================
 local function createWand(houseName)
     local house = HOUSES[1]
     for _, h in ipairs(HOUSES) do if h.name == houseName then house = h break end end
@@ -378,10 +346,8 @@ local function createWand(houseName)
     body.CFrame = handle.CFrame * CFrame.new(0,1.05,0)
     tip.CFrame  = handle.CFrame * CFrame.new(0,1.55,0)
 
-    -- TipAttachment for particles/effects
     local att = Instance.new("Attachment"); att.Name="TipAttachment"; att.Position=Vector3.new(0,0.14,0); att.Parent=tip
 
-    -- Idle particle glow at tip
     local em = Instance.new("ParticleEmitter")
     em.Color = ColorSequence.new{
         ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,120)),
@@ -393,10 +359,8 @@ local function createWand(houseName)
     em.Speed=NumberRange.new(0.5,2.5); em.SpreadAngle=Vector2.new(35,35)
     em.Lifetime=NumberRange.new(0.25,0.7); em.Rate=20; em.Parent=att
 
-    -- Glow
     local glow = Instance.new("PointLight"); glow.Brightness=4; glow.Color=house.neon; glow.Range=9; glow.Parent=tip
 
-    -- Cast burst emitter (enabled on cast)
     local burst = Instance.new("ParticleEmitter"); burst.Name="CastBurst"
     burst.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, house.neon), ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))}
     burst.LightEmission=1
@@ -405,7 +369,6 @@ local function createWand(houseName)
     burst.Speed=NumberRange.new(5,18); burst.SpreadAngle=Vector2.new(360,360)
     burst.Lifetime=NumberRange.new(0.1,0.4); burst.Rate=0; burst.Parent=att
 
-    -- Trail on tip
     local a0 = Instance.new("Attachment"); a0.Position=Vector3.new(0,0.14,0); a0.Parent=tip
     local a1 = Instance.new("Attachment"); a1.Position=Vector3.new(0,-0.14,0); a1.Parent=tip
     local tr = Instance.new("Trail"); tr.Attachment0=a0; tr.Attachment1=a1
@@ -427,9 +390,6 @@ local function giveFighterSetup(player, houseName)
     if bp then createWand(houseName).Parent = bp end
 end
 
---===========================================================
--- PHYSICS: WALL SLAM
---===========================================================
 local function wallSlam(char, dir, force, duration)
     if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
@@ -463,9 +423,6 @@ local function damageAndSlam(victimChar, hum, damage, killer, dir, force, durati
     return false
 end
 
---===========================================================
--- HIT FX PART (client-side burst fx launched from server)
---===========================================================
 local function spawnImpactFX(position, spData)
     local fx = Instance.new("Part"); fx.Size=Vector3.new(1,1,1)
     fx.CFrame=CFrame.new(position); fx.Anchored=true
@@ -485,30 +442,25 @@ local function spawnImpactFX(position, spData)
     Debris:AddItem(fx, 2)
 end
 
---===========================================================
--- GENERIC SPELL LAUNCHER
---===========================================================
-local function launchSpell(caster, duelInfo, spellName)
+local function launchSpell(cChar, spellName, targetPos, killerPlayer, duelOpponent)
     local spData = SPELL_DATA[spellName]; if not spData then return end
-    local opponent = duelInfo.opponent
-    local cChar = caster.Character; local oChar = opponent and opponent.Character
-    if not cChar or not oChar then return end
+    if not cChar then return end
+    local hrp = cChar:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
 
     local tipPart = getWandTip(cChar)
-    local startPos = tipPart and tipPart.Position or (cChar.HumanoidRootPart.Position + Vector3.new(0,1.5,0))
-    local targetPos = oChar.HumanoidRootPart.Position + Vector3.new(0,1.0,0)
+    local startPos = tipPart and tipPart.Position or (hrp.Position + Vector3.new(0,1.5,0))
+    targetPos = targetPos or (startPos + hrp.CFrame.LookVector * 80)
     local dir = (targetPos - startPos)
     if dir.Magnitude <= 0 then return end
     dir = dir.Unit
 
-    -- Trigger wand burst
     if tipPart then
         local burst = tipPart:FindFirstChild("TipAttachment") and tipPart:FindFirstChild("TipAttachment"):FindFirstChild("CastBurst")
         if burst then burst:Emit(35) end
     end
     playSoundAt(cChar, spData.sfx or SFX_CAST, 1)
 
-    -- Create projectile
     local proj = Instance.new("Part")
     proj.Name = spellName .. "Proj"
     proj.Size = spData.projSize
@@ -519,15 +471,12 @@ local function launchSpell(caster, duelInfo, spellName)
     proj.CFrame = CFrame.new(startPos, startPos + dir)
     proj.Parent = workspace
 
-    -- Sphere mesh for round spells
     if spellName == "Stupefy" or spellName == "Reducto" or spellName == "Crucio" or spellName == "Incendio" then
         local m = Instance.new("SpecialMesh"); m.MeshType = Enum.MeshType.Sphere; m.Parent = proj
     end
 
-    -- Point light
     local pl = Instance.new("PointLight"); pl.Brightness=9; pl.Range=22; pl.Color=spData.light; pl.Parent=proj
 
-    -- Trail
     local at0 = Instance.new("Attachment"); at0.Position=Vector3.new(0,0.1,0); at0.Parent=proj
     local at1 = Instance.new("Attachment"); at1.Position=Vector3.new(0,-0.1,0); at1.Parent=proj
     local trail = Instance.new("Trail"); trail.Attachment0=at0; trail.Attachment1=at1
@@ -538,7 +487,6 @@ local function launchSpell(caster, duelInfo, spellName)
     trail.WidthScale = NumberSequence.new{NumberSequenceKeypoint.new(0,1.2),NumberSequenceKeypoint.new(1,0)}
     trail.Parent = proj
 
-    -- Sparks / particles
     local pe = Instance.new("ParticleEmitter")
     pe.Color = ColorSequence.new{ColorSequenceKeypoint.new(0,spData.sparkCol),ColorSequenceKeypoint.new(1,spData.color)}
     pe.LightEmission=1
@@ -547,12 +495,10 @@ local function launchSpell(caster, duelInfo, spellName)
     pe.Rate = (spellName == "AvadaKedavra") and 60 or 30
     pe.SpreadAngle=Vector2.new(180,180); pe.Parent=proj
 
-    -- Special: Incendio has Fire
     if spellName == "Incendio" then
         local fire = Instance.new("Fire"); fire.Heat=15; fire.Size=4
         fire.Color=spData.color; fire.SecondaryColor=Color3.fromRGB(255,200,0); fire.Parent=proj
     end
-    -- Special: Crucio has extra energy balls effect
     if spellName == "Crucio" then
         local pe2 = Instance.new("ParticleEmitter")
         pe2.Color=ColorSequence.new(Color3.fromRGB(255,255,180)); pe2.LightEmission=1
@@ -561,32 +507,55 @@ local function launchSpell(caster, duelInfo, spellName)
         pe2.Rate=25; pe2.SpreadAngle=Vector2.new(360,360); pe2.Parent=proj
     end
 
-    -- BodyVelocity
     local bv = Instance.new("BodyVelocity")
     bv.Velocity = dir * spData.speed; bv.MaxForce = Vector3.new(1e9,1e9,1e9); bv.Parent = proj
 
-    -- Hit detection
     local hitDone = false
     proj.Touched:Connect(function(hit)
         if hitDone then return end
         if not hit or not hit.Parent then return end
-        if hit.Parent == cChar then return end
-        local hp = Players:GetPlayerFromCharacter(hit.Parent)
-        if hp ~= opponent then return end
-        hitDone = true
+        if hit:IsDescendantOf(cChar) then return end
 
-        local hum = hit.Parent:FindFirstChildOfClass("Humanoid")
-        local died = damageAndSlam(hit.Parent, hum, spData.damage, caster, dir, spData.kb, spData.kbDur)
+        if hit:GetAttribute("BreakableGlass") then
+            hitDone = true
+            spawnImpactFX(proj.Position, spData)
+            hit:Destroy()
+            proj:Destroy()
+            return
+        end
+        if hit:IsA("BasePart") and not hit.Anchored and hit.CanCollide and not hitDone then
+            hitDone = true
+            spawnImpactFX(proj.Position, spData)
+            hit:Destroy()
+            proj:Destroy()
+            return
+        end
+
+        local victimModel = hit:FindFirstAncestorOfClass("Model")
+        local hum = victimModel and victimModel:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then return end
+
+        if duelOpponent then
+            local duelChar = duelOpponent.Character
+            if victimModel ~= duelChar then return end
+        end
+        hitDone = true
+        local victimPlayer = Players:GetPlayerFromCharacter(victimModel)
+        local killedBy = killerPlayer
+        local died = damageAndSlam(victimModel, hum, spData.damage, killedBy, dir, spData.kb, spData.kbDur)
 
         spawnImpactFX(proj.Position, spData)
 
-        RE_SpellEffect:FireClient(caster,   spellName .. "_hit",   false)
-        RE_SpellEffect:FireClient(opponent, spellName .. "_hit",   true)
+        if killerPlayer then
+            RE_SpellEffect:FireClient(killerPlayer, spellName .. "_hit", false)
+        end
+        if victimPlayer then
+            RE_SpellEffect:FireClient(victimPlayer, spellName .. "_hit", true)
+        end
 
-        -- Avada Kedavra: epic extra death FX
         if spellName == "AvadaKedavra" then
-            RE_SpellEffect:FireClient(caster,   "AvadaKill_cast")
-            RE_SpellEffect:FireClient(opponent, "AvadaKill_victim")
+            if killerPlayer then RE_SpellEffect:FireClient(killerPlayer, "AvadaKill_cast") end
+            if victimPlayer then RE_SpellEffect:FireClient(victimPlayer, "AvadaKill_victim") end
         end
 
         proj:Destroy()
@@ -595,9 +564,6 @@ local function launchSpell(caster, duelInfo, spellName)
     Debris:AddItem(proj, 8)
 end
 
---===========================================================
--- CLASH SYSTEM — Priori Incantatem
---===========================================================
 local function destroyClashBeam(beam)
     if not beam then return end
     if beam.Parent then beam:Destroy() end
@@ -618,7 +584,6 @@ local function makeClashBeam(p1, p2, col)
 
     local a0 = ensureAtt(t1); local a1 = ensureAtt(t2)
 
-    -- Main beam
     local beam = Instance.new("Beam")
     beam.Attachment0=a0; beam.Attachment1=a1; beam.FaceCamera=true
     beam.Width0=0.6; beam.Width1=0.6; beam.LightEmission=1; beam.Segments=30
@@ -626,13 +591,11 @@ local function makeClashBeam(p1, p2, col)
     beam.Transparency = NumberSequence.new{NumberSequenceKeypoint.new(0,0), NumberSequenceKeypoint.new(0.5,0.1), NumberSequenceKeypoint.new(1,0)}
     beam.Parent = t1
 
-    -- Secondary wavy beam
     local beam2 = beam:Clone(); beam2.Width0=0.25; beam2.Width1=0.25
     beam2.CurveSize0=math.random(2,6); beam2.CurveSize1=math.random(2,6)
     beam2.Color = ColorSequence.new(Color3.fromRGB(255,255,255), col or Color3.fromRGB(120,255,120))
     beam2.Parent = t1
 
-    -- Sparks at tips
     local function tipSpark(att, c)
         local sp = Instance.new("ParticleEmitter"); sp.Color=ColorSequence.new(c)
         sp.LightEmission=1; sp.Size=NumberSequence.new{NumberSequenceKeypoint.new(0,0.4),NumberSequenceKeypoint.new(1,0)}
@@ -642,7 +605,6 @@ local function makeClashBeam(p1, p2, col)
     local sp1 = tipSpark(a0, col or Color3.fromRGB(120,255,120))
     local sp2 = tipSpark(a1, col or Color3.fromRGB(120,255,120))
 
-    -- Midpoint orb
     local mid = Instance.new("Part"); mid.Anchored=true; mid.CanCollide=false
     mid.Size=Vector3.new(1.4,1.4,1.4); mid.Material=Enum.Material.Neon
     mid.Color=col or Color3.fromRGB(120,255,120); mid.CastShadow=false
@@ -682,12 +644,10 @@ local function startClash(p1, spell1, p2, spell2, arenaIdx)
     RE_SpellEffect:FireClient(p1, "ClashStart", spell1, spell2)
     RE_SpellEffect:FireClient(p2, "ClashStart", spell2, spell1)
 
-    -- Determine winner
     local pow1 = (SPELL_DATA[spell1] and SPELL_DATA[spell1].power) or 0
     local pow2 = (SPELL_DATA[spell2] and SPELL_DATA[spell2].power) or 0
     local winnerIdx = (pow1 > pow2) and 1 or (pow2 > pow1) and 2 or math.random(1,2)
 
-    -- Animate orb moving toward loser over 4 seconds
     local DURATION = 4.0
     local startT = os.clock()
 
@@ -705,12 +665,10 @@ local function startClash(p1, spell1, p2, spell2, arenaIdx)
 
         vis.mid.CFrame = CFrame.new(t1p:Lerp(t2p, orbT))
 
-        -- Pulse orb
         local scale = 1.4 + math.sin(elapsed * 8) * 0.3
         vis.mid.Size = Vector3.new(scale, scale, scale)
         vis.mid.CFrame = CFrame.new(t1p:Lerp(t2p, orbT))
 
-        -- Send progress to clients for camera shake intensity
         RE_ClashUpdate:FireClient(p1, progress, winnerIdx == 1)
         RE_ClashUpdate:FireClient(p2, progress, winnerIdx == 2)
     end)
@@ -718,12 +676,10 @@ local function startClash(p1, spell1, p2, spell2, arenaIdx)
     task.wait(DURATION)
     if conn then conn:Disconnect() end
 
-    -- Resolve clash
     local winner = (winnerIdx == 1) and p1 or p2
     local loser  = (winnerIdx == 1) and p2 or p1
     local wSpell = (winnerIdx == 1) and spell1 or spell2
 
-    -- Big explosion at orb position then cleanup
     if vis and vis.mid and vis.mid.Parent then
         spawnImpactFX(vis.mid.Position, SPELL_DATA[wSpell] or SPELL_DATA.AvadaKedavra)
         vis.sp1:Emit(80); vis.sp2:Emit(80)
@@ -744,7 +700,6 @@ local function startClash(p1, spell1, p2, spell2, arenaIdx)
 
     task.wait(0.3)
 
-    -- Apply damage to loser
     if playerDuel[winner] and playerDuel[loser] then
         local lchar = loser.Character
         if lchar then
@@ -766,32 +721,35 @@ local function startClash(p1, spell1, p2, spell2, arenaIdx)
     end
 end
 
---===========================================================
--- CAST HANDLER
---===========================================================
-RE_CastSpell.OnServerEvent:Connect(function(caster, spellName)
-    local duelInfo = playerDuel[caster]; if not duelInfo then return end
+RE_CastSpell.OnServerEvent:Connect(function(caster, spellName, targetPos)
+    local duelInfo = playerDuel[caster]
     if not SPELL_DATA[spellName] then return end
+    local char = caster.Character
+    if not char then return end
+
+    if targetPos and typeof(targetPos) ~= "Vector3" then
+        targetPos = nil
+    end
+
+    local wand = char:FindFirstChild("Varita Magica")
+    if wand then
+        wand:SetAttribute("CastSpell", spellName)
+        wand:SetAttribute("Casting", true)
+        task.delay(0.5, function() if wand then wand:SetAttribute("Casting", false) end end)
+    end
+
+    if not duelInfo then
+        launchSpell(char, spellName, targetPos, caster, nil)
+        return
+    end
 
     local arenaIdx = duelInfo.arenaIdx
     local opponent = duelInfo.opponent
     if not opponent or not playerDuel[opponent] then return end
 
-    -- Wand cast burst FX on server
-    local char = caster.Character
-    if char then
-        local wand = char:FindFirstChild("Varita Magica")
-        if wand then
-            wand:SetAttribute("CastSpell", spellName)
-            wand:SetAttribute("Casting", true)
-            task.delay(0.5, function() if wand then wand:SetAttribute("Casting", false) end end)
-        end
-    end
-
     local now = os.clock()
     local oppPending = pendingCast[opponent]
 
-    -- Clash check: both cast within CLASH_WINDOW
     if oppPending and (now - oppPending.time) <= CLASH_WINDOW and not clashActive[arenaIdx] then
         pendingCast[caster] = nil
         task.spawn(startClash, opponent, oppPending.spell, caster, spellName, arenaIdx)
@@ -807,13 +765,12 @@ RE_CastSpell.OnServerEvent:Connect(function(caster, spellName)
         if not playerDuel[caster] or not playerDuel[opponent] then pendingCast[caster]=nil; return end
         if clashActive[arenaIdx] then pendingCast[caster]=nil; return end
         pendingCast[caster] = nil
-        launchSpell(caster, duelInfo, spellName)
+        local oppChar = opponent.Character
+        local duelTarget = (oppChar and oppChar:FindFirstChild("HumanoidRootPart") and (oppChar.HumanoidRootPart.Position + Vector3.new(0, 1, 0))) or targetPos
+        launchSpell(char, spellName, duelTarget, caster, opponent)
     end)
 end)
 
---===========================================================
--- LOBBY WORLD BUILD
---===========================================================
 local spawnLoc = workspace:FindFirstChild("LobbySpawn")
 if not spawnLoc then
     spawnLoc = Instance.new("SpawnLocation"); spawnLoc.Name="LobbySpawn"
@@ -873,9 +830,61 @@ for i=1,14 do
     createFlyingCandle(Vector3.new(math.random(-70,70), LH-math.random(5,18), math.random(-40,40)), LobbyModel)
 end
 
---===========================================================
--- PAD STATIONS
---===========================================================
+local CastleRaidModel = workspace:FindFirstChild("CastleRaidRoom")
+if CastleRaidModel then CastleRaidModel:Destroy() end
+CastleRaidModel = Instance.new("Model")
+CastleRaidModel.Name = "CastleRaidRoom"
+CastleRaidModel.Parent = workspace
+
+local ROOM_CENTER = Vector3.new(0, 6, 140)
+local RW, RD, RH = 32, 42, 24
+
+local raidFloor = makePart("RaidFloor", Vector3.new(RW, 1.5, RD), CFrame.new(ROOM_CENTER + Vector3.new(0, -0.75, 0)), "Dark stone grey", Enum.Material.Slate, CastleRaidModel, true, true)
+addTex(raidFloor, Enum.NormalId.Top, 5, 5)
+makePart("RaidCeiling", Vector3.new(RW, 1.5, RD), CFrame.new(ROOM_CENTER + Vector3.new(0, RH, 0)), "Dark stone grey", Enum.Material.Slate, CastleRaidModel, true, true)
+local raidBack = makePart("RaidWallBack", Vector3.new(RW, RH, 1.5), CFrame.new(ROOM_CENTER + Vector3.new(0, RH / 2, -RD / 2)), "Dark stone grey", Enum.Material.Slate, CastleRaidModel, true, true)
+local raidFront = makePart("RaidWallFront", Vector3.new(RW, RH, 1.5), CFrame.new(ROOM_CENTER + Vector3.new(0, RH / 2, RD / 2)), "Dark stone grey", Enum.Material.Slate, CastleRaidModel, true, true)
+makePart("RaidWallLeft", Vector3.new(1.5, RH, RD), CFrame.new(ROOM_CENTER + Vector3.new(-RW / 2, RH / 2, 0)), "Dark stone grey", Enum.Material.Slate, CastleRaidModel, true, true)
+makePart("RaidWallRight", Vector3.new(1.5, RH, RD), CFrame.new(ROOM_CENTER + Vector3.new(RW / 2, RH / 2, 0)), "Dark stone grey", Enum.Material.Slate, CastleRaidModel, true, true)
+
+for i, off in ipairs({-10, 0, 10}) do
+    local carpet = makePart("Carpet_" .. i, Vector3.new(7, 0.2, 10), CFrame.new(ROOM_CENTER + Vector3.new(off, 0.2, 0)), "Crimson", Enum.Material.Fabric, CastleRaidModel, false, true)
+    addTex(carpet, Enum.NormalId.Top, 2, 2, "rbxassetid://6078866827")
+end
+
+local function makeBreakableWindow(name, pos)
+    local frame = makePart(name .. "_Frame", Vector3.new(7.5, 9, 0.8), CFrame.new(pos), "Dark stone grey", Enum.Material.Slate, CastleRaidModel, true, true)
+    local pane = makePart(name .. "_Glass", Vector3.new(7, 8.5, 0.2), CFrame.new(pos), "Pastel light blue", Enum.Material.Glass, CastleRaidModel, true, true)
+    pane.Transparency = 0.25
+    pane:SetAttribute("BreakableGlass", true)
+    frame.Transparency = 0
+end
+makeBreakableWindow("WindowA", ROOM_CENTER + Vector3.new(-10, 13, -RD / 2 + 0.9))
+makeBreakableWindow("WindowB", ROOM_CENTER + Vector3.new(0, 13, -RD / 2 + 0.9))
+makeBreakableWindow("WindowC", ROOM_CENTER + Vector3.new(10, 13, -RD / 2 + 0.9))
+
+local raidDoor = makePart("RaidDoor", Vector3.new(7, 10, 1.2), CFrame.new(0, 6, 18), "Reddish brown", Enum.Material.WoodPlanks, LobbyModel, true, true)
+local raidDoorOpen = false
+local doorPrompt = Instance.new("ProximityPrompt")
+doorPrompt.ActionText = "Abrir puerta"
+doorPrompt.ObjectText = "Sala del Castillo"
+doorPrompt.KeyboardKeyCode = Enum.KeyCode.E
+doorPrompt.HoldDuration = 0.2
+doorPrompt.MaxActivationDistance = 10
+doorPrompt.Parent = raidDoor
+
+local raidSpawn = ROOM_CENTER + Vector3.new(0, 2, RD / 2 - 6)
+doorPrompt.Triggered:Connect(function(player)
+    if not raidDoorOpen then
+        raidDoorOpen = true
+        TweenService:Create(raidDoor, TweenInfo.new(0.45, Enum.EasingStyle.Quad), {CFrame = raidDoor.CFrame * CFrame.new(0, 7, 0)}):Play()
+    end
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then hrp.CFrame = CFrame.new(raidSpawn) end
+    giveFighterSetup(player, "Gryffindor")
+end)
+
 local function createPadStation(idx, data)
     local pad = makePart("DuelPad_"..idx, Vector3.new(10,0.25,10), CFrame.new(data.pos), "Bright yellow", Enum.Material.Neon, LobbyModel, false, true)
     pad.Transparency = 0.2
@@ -923,9 +932,6 @@ end
 
 for i=1,4 do updateBoardForPad(i) end
 
---===========================================================
--- LEADERBOARD WALL
---===========================================================
 local boardPart = makePart("LeaderboardBoard", Vector3.new(26,16,0.4), CFrame.new(0,23,LD/2-1.35), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
 local boardGui = Instance.new("SurfaceGui"); boardGui.Face=Enum.NormalId.Front; boardGui.AlwaysOnTop=true; boardGui.LightInfluence=0; boardGui.Parent=boardPart
 
@@ -994,9 +1000,6 @@ end
 
 task.spawn(function() while true do refreshLeaderboard(); task.wait(12) end end)
 
---===========================================================
--- ARENAS
---===========================================================
 local function buildArena(idx)
     local center=ARENA_CENTERS[idx]
     local model=Instance.new("Model"); model.Name="Arena_"..idx; model.Parent=workspace
@@ -1057,9 +1060,100 @@ end
 
 for i=1,4 do buildArena(i) end
 
---===========================================================
--- ROUND SYSTEM
---===========================================================
+local NPC_FOLDER = Instance.new("Folder")
+NPC_FOLDER.Name = "DarkWizards"
+NPC_FOLDER.Parent = CastleRaidModel
+
+local NORMAL_NPC_SPELLS = {"Expelliarmus", "Stupefy", "Incendio"}
+
+local function createDarkWizardNPC(name, pos)
+    local m = Instance.new("Model")
+    m.Name = name
+    m.Parent = NPC_FOLDER
+
+    local root = Instance.new("Part")
+    root.Name = "HumanoidRootPart"
+    root.Size = Vector3.new(2, 2, 1)
+    root.Position = pos
+    root.Transparency = 1
+    root.Anchored = true
+    root.CanCollide = false
+    root.Parent = m
+
+    local torso = makePart("Torso", Vector3.new(2.2, 2.6, 1.2), CFrame.new(pos + Vector3.new(0, 1.8, 0)), "Really black", Enum.Material.Fabric, m, false, true)
+    local head = makePart("Head", Vector3.new(2, 1, 1), CFrame.new(pos + Vector3.new(0, 3.7, 0)), "Pastel brown", Enum.Material.SmoothPlastic, m, false, true)
+    local hatTop = makePart("HatTop", Vector3.new(1.2, 1.8, 1.2), CFrame.new(pos + Vector3.new(0, 5.1, 0)), "Really black", Enum.Material.Fabric, m, false, true)
+    local hatBrim = makePart("HatBrim", Vector3.new(2.4, 0.2, 2.4), CFrame.new(pos + Vector3.new(0, 4.2, 0)), "Really black", Enum.Material.Fabric, m, false, true)
+    local robe = makePart("Robe", Vector3.new(2.5, 3.4, 1.5), CFrame.new(pos + Vector3.new(0, 0.4, 0)), "Mid gray", Enum.Material.Fabric, m, false, true)
+    robe.Color = Color3.fromRGB(35, 35, 50)
+
+    for _, part in ipairs({torso, head, hatTop, hatBrim, robe}) do
+        local wc = Instance.new("WeldConstraint")
+        wc.Part0 = root
+        wc.Part1 = part
+        wc.Parent = root
+    end
+
+    local hum = Instance.new("Humanoid")
+    hum.MaxHealth = 280
+    hum.Health = hum.MaxHealth
+    hum.DisplayName = "Mago Oscuro"
+    hum.NameDisplayDistance = 80
+    hum.HealthDisplayDistance = 80
+    hum.Parent = m
+
+    local npcWand = createWand("Slytherin")
+    npcWand.Parent = m
+    npcWand.Handle.CFrame = CFrame.new(pos + Vector3.new(1.1, 2.3, 0))
+    local wandWeld = Instance.new("WeldConstraint")
+    wandWeld.Part0 = root
+    wandWeld.Part1 = npcWand.Handle
+    wandWeld.Parent = npcWand.Handle
+    m.PrimaryPart = root
+    return m
+end
+
+local spawnedNPCs = {}
+for i, p in ipairs({
+    ROOM_CENTER + Vector3.new(-8, 1, -8),
+    ROOM_CENTER + Vector3.new(8, 1, -10),
+    ROOM_CENTER + Vector3.new(0, 1, 6),
+}) do
+    table.insert(spawnedNPCs, createDarkWizardNPC("DarkWizard_" .. i, p))
+end
+
+task.spawn(function()
+    while true do
+        task.wait(2.2)
+        local players = Players:GetPlayers()
+        for _, npc in ipairs(spawnedNPCs) do
+            local hum = npc and npc:FindFirstChildOfClass("Humanoid")
+            local hrp = npc and npc:FindFirstChild("HumanoidRootPart")
+            if hum and hrp and hum.Health > 0 then
+                local targetChar
+                local targetDist = math.huge
+                for _, pl in ipairs(players) do
+                    local ch = pl.Character
+                    local phrp = ch and ch:FindFirstChild("HumanoidRootPart")
+                    local ph = ch and ch:FindFirstChildOfClass("Humanoid")
+                    if phrp and ph and ph.Health > 0 then
+                        local d = (phrp.Position - hrp.Position).Magnitude
+                        if d < 80 and d < targetDist then
+                            targetDist = d
+                            targetChar = ch
+                        end
+                    end
+                end
+                if targetChar and math.random() < 0.65 then
+                    local spell = NORMAL_NPC_SPELLS[math.random(1, #NORMAL_NPC_SPELLS)]
+                    local tPos = targetChar.HumanoidRootPart.Position + Vector3.new(0, 1, 0)
+                    launchSpell(npc, spell, tPos, nil, nil)
+                end
+            end
+        end
+    end
+end)
+
 local function removeFromSquare(player)
     local idx=playerSquare[player]; if not idx then return end
     local sq=squares[idx]
@@ -1187,9 +1281,6 @@ local function startDuel(squareIdx)
     end)
 end
 
---===========================================================
--- TOUCH PADS
---===========================================================
 for i,sqPart in ipairs(squareParts) do
     sqPart.Touched:Connect(function(hit)
         local char=hit and hit.Parent
@@ -1222,9 +1313,6 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
---===========================================================
--- PLAYER EVENTS
---===========================================================
 Players.PlayerAdded:Connect(function(player)
     local ls=Instance.new("Folder"); ls.Name="leaderstats"; ls.Parent=player
     local kills=Instance.new("IntValue"); kills.Name="Kills"; kills.Value=0; kills.Parent=ls
@@ -1233,6 +1321,8 @@ Players.PlayerAdded:Connect(function(player)
         removeFromSquare(player); playerDuel[player]=nil; pendingCast[player]=nil
         local hrp=char:WaitForChild("HumanoidRootPart"); task.wait(0.15)
         hrp.CFrame=CFrame.new(LOBBY_SPAWN+Vector3.new(math.random(-8,8),0,math.random(-8,8)))
+        task.wait(0.1)
+        giveFighterSetup(player, "Gryffindor")
     end)
 end)
 
