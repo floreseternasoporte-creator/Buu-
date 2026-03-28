@@ -1,7 +1,3 @@
---===========================================================
--- ⚡ HARRY POTTER DUELING GAME - LOCAL SCRIPT v12.0 ⚡
--- Coloca en: StarterPlayerScripts > LocalScript
---===========================================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -21,9 +17,6 @@ local RE_Countdown = Remotes:WaitForChild("Countdown")
 local RE_RoundUpdate = Remotes:WaitForChild("RoundUpdate")
 local RE_SpellEffect = Remotes:WaitForChild("SpellEffect")
 local RE_ClashUpdate = Remotes:WaitForChild("ClashUpdate")
---===========================================================
--- SPELL DEFINITIONS
---===========================================================
 local SPELLS = {
 {
 name = "Expelliarmus",
@@ -113,9 +106,6 @@ animType = "avada",
 local WAND_NAME = "Varita Magica"
 local isInDuel = false
 local spellOnCD = {}
---===========================================================
--- UI HELPERS
---===========================================================
 local oldGui = PlayerGui:FindFirstChild("DuelUI")
 if oldGui then oldGui:Destroy() end
 local sg = Instance.new("ScreenGui")
@@ -171,18 +161,12 @@ l.ZIndex = zi or 10
 l.Parent = parent
 return l
 end
---===========================================================
--- BLACK SCREEN
---===========================================================
 local blackScreen = mF(sg, UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), Color3.new(0,0,0), 1, 80)
 local function fadeBlack(target, t)
 local twn = tw(blackScreen, {BackgroundTransparency = target}, t or 0.5, Enum.EasingStyle.Linear)
 twn:Play()
 twn.Completed:Wait()
 end
---===========================================================
--- CAMERA SHAKE
---===========================================================
 local shakeActive = false
 local shakeMag = 0
 local shakeDur = 0
@@ -205,9 +189,6 @@ end
 shakeActive = false
 end)
 end
---===========================================================
--- SCREEN FLASH
---===========================================================
 local function screenFlash(col, alpha, dur, extra)
 local fl = mF(sg, UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), col, alpha, 78)
 tw(fl, {BackgroundTransparency = 1}, dur):Play()
@@ -234,9 +215,6 @@ if vi.Parent then vi:Destroy() end
 end)
 end
 end
---===========================================================
--- SPELL FX CLIENT
---===========================================================
 local function screenFX(spellName, isVictim)
 if spellName == "AvadaKill_victim" then
 screenFlash(Color3.fromRGB(0,200,20), 0.15, 1.2, "vignette")
@@ -276,9 +254,6 @@ screenFlash(Color3.fromRGB(255,255,255), isVictim and 0.5 or 0.65, isVictim and 
 cameraShake(isVictim and 0.5 or 0.6, isVictim and 0.8 or 1.0)
 end
 end
---===========================================================
--- WAND ANIMATION
---===========================================================
 local function getMotors(char)
 if not char then return nil, nil end
 local ut = char:FindFirstChild("UpperTorso")
@@ -353,9 +328,6 @@ end
 end)
 end
 end
---===========================================================
--- DECLARATIONS
---===========================================================
 local bookOpen = false
 local spellEntries = {}
 local openBook
@@ -363,9 +335,6 @@ local closeBook
 local toggleBook
 local updateSpellCooldown
 local castSpell
---===========================================================
--- SPELLBOOK UI
---===========================================================
 local bookTriggerWrap = mF(
 sg,
 UDim2.new(0, 56, 0, 56),
@@ -715,7 +684,6 @@ tw(entry, {BackgroundTransparency = 0.08}, 0.12):Play()
 tw(nameLabel, {TextColor3 = sp.glow}, 0.12):Play()
 end
 end)
--- IMPORTANTE: se cierra el libro y luego se lanza el hechizo
 entry.Activated:Connect(function()
 task.spawn(function()
 if bookOpen then
@@ -763,9 +731,6 @@ end)
 closeBtn.Activated:Connect(function()
 closeBook()
 end)
---===========================================================
--- KEYBOARD INPUT
---===========================================================
 UserInputService.InputBegan:Connect(function(inp, gp)
 if gp then return end
 for _, sp in ipairs(SPELLS) do
@@ -778,9 +743,6 @@ if inp.KeyCode == Enum.KeyCode.B then
 toggleBook()
 end
 end)
---===========================================================
--- COUNTDOWN UI
---===========================================================
 local cdWrap = mF(sg, UDim2.new(0,190,0,105), UDim2.new(0.5,-95,0.04,0), Color3.fromRGB(4,1,14), 0.18, 22)
 cdWrap.Visible = false
 corner(cdWrap, 0.16)
@@ -817,9 +779,6 @@ cdNum.TextColor3 = Color3.fromRGB(255,255,255)
 end)
 end
 end
---===========================================================
--- TEAM + DEATHS HUD (Co-op)
---===========================================================
 local teamWrap = mF(sg, UDim2.new(0,260,0,64), UDim2.new(0,14,1,-142), Color3.fromRGB(8,8,18), 0.15, 22)
 corner(teamWrap, 0.18)
 stroke(teamWrap, Color3.fromRGB(80,170,255), 1.5)
@@ -843,9 +802,6 @@ if kv then kv:GetPropertyChangedSignal("Value"):Connect(updateDeathsHUD) end
 end
 updateDeathsHUD()
 end)
---===========================================================
--- HUD
---===========================================================
 local hudWrap = mF(sg, UDim2.new(0,520,0,96), UDim2.new(0.5,-260,0,6), Color3.fromRGB(3,1,12), 0.15, 18)
 hudWrap.Visible = false
 corner(hudWrap, 0.14)
@@ -898,9 +854,6 @@ if d.str then d.str.Color = Color3.fromRGB(80,80,100) end
 end
 end
 end
---===========================================================
--- HP BAR
---===========================================================
 local hpWrap = mF(sg, UDim2.new(0,320,0,58), UDim2.new(0.02,0,1,-70), Color3.fromRGB(4,1,14), 0.25, 18)
 hpWrap.Visible = false
 corner(hpWrap, 0.18)
@@ -913,9 +866,6 @@ local hpBar = mF(hpBg, UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), Color3.fromRGB(50
 corner(hpBar, 1)
 local hpShine = mF(hpBar, UDim2.new(1,0,0.5,0), UDim2.new(0,0,0,0), Color3.fromRGB(255,255,255), 0.6, 21)
 corner(hpShine, 1)
---===========================================================
--- ANNOUNCEMENT SCREEN
---===========================================================
 local annBg = mF(sg, UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), Color3.new(0,0,0), 0, 58)
 annBg.Visible = false
 local annContainer = mF(annBg, UDim2.new(0.65,0,0.6,0), UDim2.new(0.175,0,0.2,0), Color3.new(0,0,0), 1, 59)
@@ -981,9 +931,6 @@ hum:EquipTool(wand)
 end
 end)
 end
---===========================================================
--- RESULT SCREEN
---===========================================================
 local resWrap = mF(sg, UDim2.new(0,420,0,190), UDim2.new(0.5,-210,0.3,0), Color3.new(0,0,0), 0.2, 92)
 resWrap.Visible = false
 corner(resWrap, 0.12)
@@ -995,9 +942,6 @@ resTxt.TextStrokeTransparency = 0
 resTxt.TextTransparency = 1
 local resSub = mL(resWrap, "", UDim2.new(1,0,0.28,0), UDim2.new(0,0,0.72,0), Color3.fromRGB(200,200,200), Enum.Font.GothamBold, 93)
 resSub.TextTransparency = 1
---===========================================================
--- REMOTES
---===========================================================
 RE_BattleStart.OnClientEvent:Connect(function(opponentName)
 task.spawn(playAnnouncement, opponentName)
 end)
@@ -1062,9 +1006,6 @@ RE_ClashUpdate.OnClientEvent:Connect(function(progress, youreWinning)
 local intensity = 0.05 + progress * (youreWinning and 0.05 or 0.18)
 cameraShake(intensity, 0.12)
 end)
---===========================================================
--- HP BAR UPDATE
---===========================================================
 RunService.Heartbeat:Connect(function()
 if not isInDuel then return end
 local char = LocalPlayer.Character
