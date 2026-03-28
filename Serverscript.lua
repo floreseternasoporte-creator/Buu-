@@ -357,62 +357,173 @@ local function createWand(houseName)
 
     local wand = Instance.new("Tool"); wand.Name = "Varita Magica"
     wand.RequiresHandle = true; wand.CanBeDropped = false
-    wand.GripPos = Vector3.new(0,-0.5,0); wand.GripForward = Vector3.new(0,0,1)
+    wand.GripPos = Vector3.new(0,-0.62,0); wand.GripForward = Vector3.new(0,0,1)
     wand.GripRight = Vector3.new(1,0,0); wand.GripUp = Vector3.new(0,1,0)
     wand:SetAttribute("HouseName", houseName or "Gryffindor")
 
     local function wp(name, size, col, mat)
-        local p = Instance.new("Part"); p.Name=name; p.Size=size
-        p.BrickColor=BrickColor.new(col); p.Material=mat or Enum.Material.WoodPlanks
-        p.CanCollide=false; p.Massless=true; p.CastShadow=false; p.Parent=wand
+        local p = Instance.new("Part")
+        p.Name = name; p.Size = size
+        p.BrickColor = BrickColor.new(col)
+        p.Material = mat or Enum.Material.SmoothPlastic
+        p.CanCollide = false; p.Massless = true; p.CastShadow = false
+        p.TopSurface = Enum.SurfaceType.Smooth
+        p.BottomSurface = Enum.SurfaceType.Smooth
+        p.Parent = wand
         return p
     end
 
-    local handle = wp("Handle",    Vector3.new(0.22,1.3,0.22),  "Reddish brown")
-    local body   = wp("WandBody",  Vector3.new(0.14,0.95,0.14), "Dark orange")
-    local tip    = wp("WandTip",   Vector3.new(0.10,0.28,0.10), "White")
-    tip.Material = Enum.Material.Neon; tip.Color = house.neon
+    local function addCylinder(part)
+        local m = Instance.new("SpecialMesh")
+        m.MeshType = Enum.MeshType.Cylinder
+        m.Parent = part
+    end
 
-    local function weld(p0, p1) local w=Instance.new("WeldConstraint"); w.Part0=p0; w.Part1=p1; w.Parent=p0 end
-    weld(handle, body); weld(handle, tip)
-    body.CFrame = handle.CFrame * CFrame.new(0,1.05,0)
-    tip.CFrame  = handle.CFrame * CFrame.new(0,1.55,0)
+    local function weld(p0, p1)
+        local w = Instance.new("WeldConstraint")
+        w.Part0 = p0; w.Part1 = p1; w.Parent = p0
+    end
+
+    local handle = wp("Handle", Vector3.new(0.26,1.25,0.26), "Black", Enum.Material.Metal)
+    handle.Color = Color3.fromRGB(35, 22, 16)
+    handle:SetAttribute("WandCore", true)
+    addCylinder(handle)
+
+    local lowerGrip = wp("GripLower", Vector3.new(0.34,0.18,0.34), "Black", Enum.Material.Metal)
+    lowerGrip.Color = Color3.fromRGB(58, 40, 26)
+    addCylinder(lowerGrip)
+
+    local midRing = wp("GripRing", Vector3.new(0.32,0.12,0.32), "Dark stone grey", Enum.Material.DiamondPlate)
+    midRing.Color = Color3.fromRGB(124, 99, 58)
+    addCylinder(midRing)
+
+    local coreGem = wp("CoreGem", Vector3.new(0.24,0.2,0.24), "Royal purple", Enum.Material.Neon)
+    coreGem.Color = house.neon
+    addCylinder(coreGem)
+
+    local shaft = wp("WandBody", Vector3.new(0.16,1.38,0.16), "Reddish brown", Enum.Material.Wood)
+    shaft.Color = Color3.fromRGB(110, 63, 45)
+    addCylinder(shaft)
+
+    local upperEtch = wp("UpperEtch", Vector3.new(0.2,0.3,0.2), "Brown", Enum.Material.Metal)
+    upperEtch.Color = Color3.fromRGB(96, 67, 47)
+    addCylinder(upperEtch)
+
+    local tip = wp("WandTip", Vector3.new(0.08,0.44,0.08), "Institutional white", Enum.Material.Neon)
+    tip.Color = house.neon
+    addCylinder(tip)
+
+    local pommel = wp("Pommel", Vector3.new(0.38,0.3,0.38), "Dark stone grey", Enum.Material.Metal)
+    pommel.Color = Color3.fromRGB(70, 54, 38)
+    addCylinder(pommel)
+
+    lowerGrip.CFrame = handle.CFrame * CFrame.new(0,-0.53,0)
+    midRing.CFrame = handle.CFrame * CFrame.new(0,-0.27,0)
+    coreGem.CFrame = handle.CFrame * CFrame.new(0,-0.08,0)
+    shaft.CFrame = handle.CFrame * CFrame.new(0,1.25,0)
+    upperEtch.CFrame = shaft.CFrame * CFrame.new(0,0.56,0)
+    tip.CFrame = shaft.CFrame * CFrame.new(0,0.9,0)
+    pommel.CFrame = handle.CFrame * CFrame.new(0,-0.82,0)
+
+    for _, part in ipairs({lowerGrip, midRing, coreGem, shaft, upperEtch, tip, pommel}) do
+        weld(handle, part)
+    end
 
     -- TipAttachment for particles/effects
-    local att = Instance.new("Attachment"); att.Name="TipAttachment"; att.Position=Vector3.new(0,0.14,0); att.Parent=tip
+    local att = Instance.new("Attachment")
+    att.Name = "TipAttachment"; att.Position = Vector3.new(0,0.2,0); att.Parent = tip
 
-    -- Idle particle glow at tip
-    local em = Instance.new("ParticleEmitter")
-    em.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,120)),
-        ColorSequenceKeypoint.new(0.5, house.neon),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(80,200,255)),
+    -- Ambient magical aura
+    local aura = Instance.new("ParticleEmitter")
+    aura.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255,240,180)),
+        ColorSequenceKeypoint.new(0.45, house.neon),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(120,255,255)),
     }
-    em.LightEmission=1; em.Size=NumberSequence.new{NumberSequenceKeypoint.new(0,0.20),NumberSequenceKeypoint.new(0.5,0.10),NumberSequenceKeypoint.new(1,0)}
-    em.Transparency=NumberSequence.new{NumberSequenceKeypoint.new(0,0.1),NumberSequenceKeypoint.new(1,1)}
-    em.Speed=NumberRange.new(0.5,2.5); em.SpreadAngle=Vector2.new(35,35)
-    em.Lifetime=NumberRange.new(0.25,0.7); em.Rate=20; em.Parent=att
+    aura.LightEmission = 1
+    aura.Size = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0.16),
+        NumberSequenceKeypoint.new(0.55,0.08),
+        NumberSequenceKeypoint.new(1,0)
+    }
+    aura.Transparency = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0.05),
+        NumberSequenceKeypoint.new(1,1)
+    }
+    aura.Speed = NumberRange.new(0.4,2.2)
+    aura.SpreadAngle = Vector2.new(28,28)
+    aura.Lifetime = NumberRange.new(0.3,0.8)
+    aura.Rate = 34
+    aura.Parent = att
+
+    -- Arc sparks for high detail look
+    local sparks = Instance.new("ParticleEmitter")
+    sparks.Color = ColorSequence.new(house.neon, Color3.fromRGB(255,255,255))
+    sparks.LightEmission = 1
+    sparks.Size = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0.08),
+        NumberSequenceKeypoint.new(1,0)
+    }
+    sparks.Transparency = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0.1),
+        NumberSequenceKeypoint.new(1,1)
+    }
+    sparks.Speed = NumberRange.new(5,14)
+    sparks.Acceleration = Vector3.new(0,2,0)
+    sparks.Drag = 3
+    sparks.SpreadAngle = Vector2.new(360,360)
+    sparks.Lifetime = NumberRange.new(0.08,0.2)
+    sparks.Rate = 12
+    sparks.Parent = att
 
     -- Glow
-    local glow = Instance.new("PointLight"); glow.Brightness=4; glow.Color=house.neon; glow.Range=9; glow.Parent=tip
+    local glow = Instance.new("PointLight")
+    glow.Brightness = 5.5; glow.Color = house.neon; glow.Range = 12; glow.Shadows = true; glow.Parent = tip
 
     -- Cast burst emitter (enabled on cast)
-    local burst = Instance.new("ParticleEmitter"); burst.Name="CastBurst"
-    burst.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, house.neon), ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))}
-    burst.LightEmission=1
-    burst.Size = NumberSequence.new{NumberSequenceKeypoint.new(0,0.6),NumberSequenceKeypoint.new(1,0)}
-    burst.Transparency = NumberSequence.new{NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(1,1)}
-    burst.Speed=NumberRange.new(5,18); burst.SpreadAngle=Vector2.new(360,360)
-    burst.Lifetime=NumberRange.new(0.1,0.4); burst.Rate=0; burst.Parent=att
+    local burst = Instance.new("ParticleEmitter")
+    burst.Name = "CastBurst"
+    burst.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, house.neon),
+        ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255,255,255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(120,255,180)),
+    }
+    burst.LightEmission = 1
+    burst.Size = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0.9),
+        NumberSequenceKeypoint.new(0.5,0.32),
+        NumberSequenceKeypoint.new(1,0)
+    }
+    burst.Transparency = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0),
+        NumberSequenceKeypoint.new(1,1)
+    }
+    burst.Speed = NumberRange.new(10,30)
+    burst.SpreadAngle = Vector2.new(360,360)
+    burst.Lifetime = NumberRange.new(0.12,0.45)
+    burst.Rate = 0
+    burst.Parent = att
 
     -- Trail on tip
-    local a0 = Instance.new("Attachment"); a0.Position=Vector3.new(0,0.14,0); a0.Parent=tip
-    local a1 = Instance.new("Attachment"); a1.Position=Vector3.new(0,-0.14,0); a1.Parent=tip
-    local tr = Instance.new("Trail"); tr.Attachment0=a0; tr.Attachment1=a1
-    tr.Lifetime=0.18; tr.LightEmission=1
-    tr.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, house.neon), ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))}
-    tr.Transparency = NumberSequence.new{NumberSequenceKeypoint.new(0,0.1), NumberSequenceKeypoint.new(1,1)}
-    tr.WidthScale = NumberSequence.new{NumberSequenceKeypoint.new(0,1), NumberSequenceKeypoint.new(1,0)}
+    local a0 = Instance.new("Attachment"); a0.Position = Vector3.new(0,0.22,0); a0.Parent = tip
+    local a1 = Instance.new("Attachment"); a1.Position = Vector3.new(0,-0.22,0); a1.Parent = tip
+    local tr = Instance.new("Trail")
+    tr.Attachment0 = a0; tr.Attachment1 = a1
+    tr.Lifetime = 0.24; tr.LightEmission = 1
+    tr.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, house.neon),
+        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(255,255,255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(90,255,170)),
+    }
+    tr.Transparency = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0.05),
+        NumberSequenceKeypoint.new(1,1)
+    }
+    tr.WidthScale = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,1.1),
+        NumberSequenceKeypoint.new(0.5,0.7),
+        NumberSequenceKeypoint.new(1,0)
+    }
     tr.Parent = tip
 
     return wand
@@ -531,7 +642,7 @@ local function launchSpell(caster, duelInfo, spellName)
     local at0 = Instance.new("Attachment"); at0.Position=Vector3.new(0,0.1,0); at0.Parent=proj
     local at1 = Instance.new("Attachment"); at1.Position=Vector3.new(0,-0.1,0); at1.Parent=proj
     local trail = Instance.new("Trail"); trail.Attachment0=at0; trail.Attachment1=at1
-    trail.Lifetime = (spellName == "AvadaKedavra") and 0.45 or 0.28
+    trail.Lifetime = (spellName == "AvadaKedavra") and 0.65 or 0.28
     trail.LightEmission = 1
     trail.Color = ColorSequence.new{ColorSequenceKeypoint.new(0,spData.trailA), ColorSequenceKeypoint.new(1,spData.trailB)}
     trail.Transparency = NumberSequence.new{NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(1,1)}
@@ -544,7 +655,7 @@ local function launchSpell(caster, duelInfo, spellName)
     pe.LightEmission=1
     pe.Size=NumberSequence.new{NumberSequenceKeypoint.new(0,0.22),NumberSequenceKeypoint.new(1,0)}
     pe.Speed=NumberRange.new(3,9); pe.Lifetime=NumberRange.new(0.08,0.28)
-    pe.Rate = (spellName == "AvadaKedavra") and 60 or 30
+    pe.Rate = (spellName == "AvadaKedavra") and 140 or 30
     pe.SpreadAngle=Vector2.new(180,180); pe.Parent=proj
 
     -- Special: Incendio has Fire
@@ -559,6 +670,51 @@ local function launchSpell(caster, duelInfo, spellName)
         pe2.Size=NumberSequence.new{NumberSequenceKeypoint.new(0,0.35),NumberSequenceKeypoint.new(1,0)}
         pe2.Speed=NumberRange.new(8,20); pe2.Lifetime=NumberRange.new(0.15,0.45)
         pe2.Rate=25; pe2.SpreadAngle=Vector2.new(360,360); pe2.Parent=proj
+    end
+    if spellName == "AvadaKedavra" then
+        local smoke = Instance.new("ParticleEmitter")
+        smoke.Color = ColorSequence.new(Color3.fromRGB(20,120,30), Color3.fromRGB(180,255,190))
+        smoke.LightEmission = 0.8
+        smoke.Size = NumberSequence.new{
+            NumberSequenceKeypoint.new(0,0.5),
+            NumberSequenceKeypoint.new(0.6,0.9),
+            NumberSequenceKeypoint.new(1,0)
+        }
+        smoke.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0,0.2),
+            NumberSequenceKeypoint.new(1,1)
+        }
+        smoke.Speed = NumberRange.new(2,6)
+        smoke.Drag = 4
+        smoke.Rate = 70
+        smoke.Lifetime = NumberRange.new(0.2,0.5)
+        smoke.Parent = proj
+
+        local ring = Instance.new("ParticleEmitter")
+        ring.Color = ColorSequence.new(Color3.fromRGB(140,255,140), Color3.fromRGB(0,255,30))
+        ring.LightEmission = 1
+        ring.Texture = "rbxassetid://243660364"
+        ring.Size = NumberSequence.new{
+            NumberSequenceKeypoint.new(0,1.4),
+            NumberSequenceKeypoint.new(1,0)
+        }
+        ring.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0,0.12),
+            NumberSequenceKeypoint.new(1,1)
+        }
+        ring.Speed = NumberRange.new(0.5,1.2)
+        ring.RotSpeed = NumberRange.new(-120,120)
+        ring.Rate = 20
+        ring.Lifetime = NumberRange.new(0.1,0.22)
+        ring.Parent = proj
+
+        local hum = Instance.new("Sound")
+        hum.SoundId = "rbxassetid://9113420771"
+        hum.Volume = 0.6
+        hum.RollOffMaxDistance = 80
+        hum.Parent = proj
+        hum:Play()
+        Debris:AddItem(hum, 2)
     end
 
     -- BodyVelocity
@@ -1001,7 +1157,7 @@ local function buildArena(idx)
     local center=ARENA_CENTERS[idx]
     local model=Instance.new("Model"); model.Name="Arena_"..idx; model.Parent=workspace
 
-    local AW,AD,AH=36,88,35
+    local AW,AD,AH=40,132,38
     local house=HOUSES[idx]
 
     local function ap(name,size,off,color,mat,cc)
@@ -1049,8 +1205,8 @@ local function buildArena(idx)
     }) do addWallTorch(center+tp, model) end
 
     arenaData[idx] = {
-        spawnA   = center+Vector3.new(-10,3.5,-22),
-        spawnB   = center+Vector3.new( 10,3.5, 22),
+        spawnA   = center+Vector3.new(-12,3.8,-36),
+        spawnB   = center+Vector3.new( 12,3.8, 36),
         centerPos= center+Vector3.new(0,3.5,0),
     }
 end
