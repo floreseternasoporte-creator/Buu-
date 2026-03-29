@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Backpack = LocalPlayer:WaitForChild("Backpack")
@@ -27,6 +28,7 @@ local SPELLS = {
 {
 name = "Expelliarmus",
 label = "EXPELLIARMUS",
+cmd = "/expelliarmus",
 key = "Q", keyCode = Enum.KeyCode.Q,
 cd = 3.0,
 color = Color3.fromRGB(255, 55, 55),
@@ -39,6 +41,7 @@ animType = "flick",
 {
 name = "Stupefy",
 label = "STUPEFY",
+cmd = "/stupefy",
 key = "E", keyCode = Enum.KeyCode.E,
 cd = 4.0,
 color = Color3.fromRGB(255, 75, 20),
@@ -51,6 +54,7 @@ animType = "thrust",
 {
 name = "Reducto",
 label = "REDUCTO",
+cmd = "/reducto",
 key = "R", keyCode = Enum.KeyCode.R,
 cd = 7.0,
 color = Color3.fromRGB(155, 20, 255),
@@ -63,6 +67,7 @@ animType = "sweep",
 {
 name = "Sectumsempra",
 label = "SECTUMSEMPRA",
+cmd = "/sectumsempra",
 key = "F", keyCode = Enum.KeyCode.F,
 cd = 9.0,
 color = Color3.fromRGB(210, 0, 28),
@@ -75,6 +80,7 @@ animType = "slash",
 {
 name = "Crucio",
 label = "CRUCIO",
+cmd = "/crucio",
 key = "G", keyCode = Enum.KeyCode.G,
 cd = 12.0,
 color = Color3.fromRGB(230, 215, 0),
@@ -87,6 +93,7 @@ animType = "twist",
 {
 name = "Incendio",
 label = "INCENDIO",
+cmd = "/incendio",
 key = "H", keyCode = Enum.KeyCode.H,
 cd = 8.0,
 color = Color3.fromRGB(255, 95, 0),
@@ -97,8 +104,22 @@ power = "⭐⭐⭐",
 animType = "push",
 },
 {
+name = "ProtegoPorta",
+label = "PROTEGO PORTA",
+cmd = "/porta",
+key = "Y", keyCode = Enum.KeyCode.Y,
+cd = 11.0,
+color = Color3.fromRGB(170, 120, 70),
+glow = Color3.fromRGB(225, 180, 120),
+bgCol = Color3.fromRGB(35, 20, 8),
+desc = "Escudo de Madera — Invoca una puerta protectora frente al brujo",
+power = "🛡🛡🛡",
+animType = "guard",
+},
+{
 name = "AvadaKedavra",
 label = "AVADA KEDAVRA",
+cmd = "/avada",
 key = "T", keyCode = Enum.KeyCode.T,
 cd = 30.0,
 color = Color3.fromRGB(0, 205, 18),
@@ -111,7 +132,9 @@ animType = "avada",
 }
 local WAND_NAME = "Varita Magica"
 local isInDuel = false
+local duelSessionActive = false
 local spellOnCD = {}
+local BOOK_CAST_ENABLED = false
 --===========================================================
 -- UI HELPERS
 --===========================================================
@@ -169,6 +192,14 @@ l.BorderSizePixel = 0
 l.ZIndex = zi or 10
 l.Parent = parent
 return l
+end
+local function safeText(value, maxLen)
+local txt = tostring(value or "")
+local lim = maxLen or 300
+if #txt >= lim then
+txt = string.sub(txt, 1, lim - 1)
+end
+return txt
 end
 --===========================================================
 -- BLACK SCREEN
@@ -238,17 +269,17 @@ end
 --===========================================================
 local function screenFX(spellName, isVictim)
 if spellName == "AvadaKill_victim" then
-screenFlash(Color3.fromRGB(0,200,20), 0.15, 1.2, "vignette")
-cameraShake(0.6, 1.5)
+screenFlash(Color3.fromRGB(0,220,40), 0.08, 1.45, "vignette")
+cameraShake(0.85, 1.9)
 task.spawn(function()
-for _ = 1, 5 do
-screenFlash(Color3.fromRGB(0,180,20), 0.25, 0.18)
-task.wait(0.22)
+for _ = 1, 7 do
+screenFlash(Color3.fromRGB(20,255,80), 0.2, 0.16)
+task.wait(0.17)
 end
 end)
 elseif spellName == "AvadaKill_cast" then
-screenFlash(Color3.fromRGB(0,255,30), 0.5, 0.6)
-cameraShake(0.15, 0.5)
+screenFlash(Color3.fromRGB(80,255,120), 0.42, 0.75)
+cameraShake(0.26, 0.8)
 elseif spellName == "Expelliarmus_hit" then
 screenFlash(Color3.fromRGB(255,50,50), isVictim and 0.55 or 0.25, isVictim and 0.6 or 0.3)
 if isVictim then cameraShake(0.3, 0.7) end
@@ -267,6 +298,12 @@ if isVictim then cameraShake(0.25, 2.2) end
 elseif spellName == "Incendio_hit" then
 screenFlash(Color3.fromRGB(255,100,0), isVictim and 0.65 or 0.3, isVictim and 0.8 or 0.3)
 if isVictim then cameraShake(0.3, 0.8) end
+elseif spellName == "ProtegoPorta_cast" then
+screenFlash(Color3.fromRGB(210,160,100), 0.28, 0.45)
+cameraShake(0.2, 0.3)
+elseif spellName == "ProtegoPorta_block" then
+screenFlash(Color3.fromRGB(255,210,160), 0.34, 0.5)
+cameraShake(0.25, 0.35)
 elseif spellName == "ClashStart" then
 screenFlash(Color3.fromRGB(120,255,120), 0.4, 0.5)
 cameraShake(0.2, 4.0)
@@ -335,6 +372,13 @@ keyframes = {
 {t = 0.25, sh = CFrame.Angles(math.rad(-20), math.rad(5), 0)},
 {t = 0.40, sh = CFrame.Angles(0,0,0)},
 }
+elseif animType == "guard" then
+keyframes = {
+{t = 0.0, sh = CFrame.Angles(math.rad(-60), math.rad(-12), math.rad(-8))},
+{t = 0.10, sh = CFrame.Angles(math.rad(-98), math.rad(4), math.rad(12))},
+{t = 0.24, sh = CFrame.Angles(math.rad(-55), math.rad(2), math.rad(4))},
+{t = 0.42, sh = CFrame.Angles(0,0,0)},
+}
 elseif animType == "avada" then
 keyframes = {
 {t = 0.0, sh = CFrame.Angles(math.rad(-20), math.rad(-15), math.rad(-15))},
@@ -344,6 +388,11 @@ keyframes = {
 {t = 0.44, sh = CFrame.Angles(0,0,0)},
 }
 end
+task.delay(0.0, function()
+if shoulder and shoulder.Parent then
+shoulder.Transform = CFrame.Angles(math.rad(-35), 0, math.rad(8))
+end
+end)
 for _, kf in ipairs(keyframes) do
 task.delay(kf.t, function()
 if shoulder and shoulder.Parent then
@@ -466,7 +515,7 @@ local lInstr = Instance.new("TextLabel")
 lInstr.Size = UDim2.new(0.85,0,0.08,0)
 lInstr.Position = UDim2.new(0.075,0,0.68,0)
 lInstr.BackgroundTransparency = 1
-lInstr.Text = "Toca un hechizo para lanzarlo"
+lInstr.Text = "Consulta hechizos disponibles"
 lInstr.TextScaled = true
 lInstr.Font = Enum.Font.Antique
 lInstr.TextColor3 = Color3.fromRGB(70,35,10)
@@ -476,7 +525,7 @@ local lInstr2 = Instance.new("TextLabel")
 lInstr2.Size = UDim2.new(0.85,0,0.06,0)
 lInstr2.Position = UDim2.new(0.075,0,0.78,0)
 lInstr2.BackgroundTransparency = 1
-lInstr2.Text = "o usa las teclas Q E R F G H T"
+lInstr2.Text = "Lánzalos escribiendo comandos en el chat (/avada, /incendio...)"
 lInstr2.TextScaled = true
 lInstr2.Font = Enum.Font.Antique
 lInstr2.TextColor3 = Color3.fromRGB(90,50,15)
@@ -539,7 +588,7 @@ task.spawn(function()
 while spellOnCD[spellName] do
 local remaining = endT - tick()
 local pct = math.clamp(remaining / cd, 0, 1)
-entry.cdOvLabel.Text = string.format("%.1fs", math.max(0, remaining))
+entry.cdOvLabel.Text = safeText(string.format("%.1fs", math.max(0, remaining)), 20)
 tw(entry.cdBarFill, {Size = UDim2.new(pct,0,1,0)}, 0.12):Play()
 task.wait(0.1)
 end
@@ -599,6 +648,30 @@ else
 openBook()
 end
 end
+local function handCastFX(sp)
+local char = LocalPlayer.Character
+local hand = char and (char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm") or char:FindFirstChild("RightUpperArm"))
+if not hand then return end
+local att = Instance.new("Attachment")
+att.Parent = hand
+local pe = Instance.new("ParticleEmitter")
+pe.Color = ColorSequence.new(sp.color, sp.glow)
+pe.LightEmission = 1
+pe.Size = NumberSequence.new{
+NumberSequenceKeypoint.new(0, 0.28),
+NumberSequenceKeypoint.new(1, 0),
+}
+pe.Transparency = NumberSequence.new{
+NumberSequenceKeypoint.new(0, 0.05),
+NumberSequenceKeypoint.new(1, 1),
+}
+pe.Speed = NumberRange.new(5, 18)
+pe.SpreadAngle = Vector2.new(360, 360)
+pe.Lifetime = NumberRange.new(0.12, 0.28)
+pe.Parent = att
+pe:Emit(26)
+Debris:AddItem(att, 0.45)
+end
 local function castSpell(spellName)
 if not isInDuel then return end
 if spellOnCD[spellName] then return end
@@ -606,13 +679,6 @@ local char = LocalPlayer.Character
 if not char then return end
 local hum = char:FindFirstChildOfClass("Humanoid")
 if not hum then return end
-local wand = char:FindFirstChild(WAND_NAME) or Backpack:FindFirstChild(WAND_NAME)
-if wand and wand.Parent == Backpack then
-hum:EquipTool(wand)
-task.wait(0.08)
-end
-local equippedWand = char:FindFirstChild(WAND_NAME)
-if not equippedWand then return end
 local sp
 for _, s in ipairs(SPELLS) do
 if s.name == spellName then
@@ -622,6 +688,7 @@ end
 end
 if not sp then return end
 animateWand(sp.animType)
+handCastFX(sp)
 spellOnCD[spellName] = true
 RE_CastSpell:FireServer(spellName)
 updateSpellCooldown(spellName, sp.cd)
@@ -673,7 +740,7 @@ local descLabel = Instance.new("TextLabel")
 descLabel.Size = UDim2.new(0.72,0,0.32,0)
 descLabel.Position = UDim2.new(0.06,0,0.56,0)
 descLabel.BackgroundTransparency = 1
-descLabel.Text = sp.desc
+descLabel.Text = sp.desc .. "  |  Comando: " .. string.upper(sp.cmd)
 descLabel.TextScaled = true
 descLabel.Font = Enum.Font.Antique
 descLabel.TextColor3 = Color3.fromRGB(200,175,120)
@@ -683,7 +750,7 @@ descLabel.Parent = entry
 local keyBadge = mF(entry, UDim2.new(0,36,0,24), UDim2.new(1,-52,0.5,-12), Color3.fromRGB(20,12,5), 0.1, 35)
 corner(keyBadge, 0.2)
 stroke(keyBadge, Color3.fromRGB(150,100,30), 1.5)
-local keyLabel = mL(keyBadge, "["..sp.key.."]", UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), Color3.fromRGB(220,185,80), Enum.Font.GothamBold, 36)
+local keyLabel = mL(keyBadge, "CMD", UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), Color3.fromRGB(220,185,80), Enum.Font.GothamBold, 36)
 local powerLabel = Instance.new("TextLabel")
 powerLabel.Size = UDim2.new(0.22,0,0.45,0)
 powerLabel.Position = UDim2.new(0.77,0,0.06,0)
@@ -714,7 +781,7 @@ tw(entry, {BackgroundTransparency = 0.08}, 0.12):Play()
 tw(nameLabel, {TextColor3 = sp.glow}, 0.12):Play()
 end
 end)
--- IMPORTANTE: se cierra el libro y luego se lanza el hechizo
+if BOOK_CAST_ENABLED then
 entry.Activated:Connect(function()
 task.spawn(function()
 if bookOpen then
@@ -724,6 +791,10 @@ end
 castSpell(sp.name)
 end)
 end)
+else
+entry.AutoButtonColor = false
+entry.Active = false
+end
 spellEntries[sp.name] = {
 entry = entry,
 nameLabel = nameLabel,
@@ -767,14 +838,23 @@ end)
 --===========================================================
 UserInputService.InputBegan:Connect(function(inp, gp)
 if gp then return end
-for _, sp in ipairs(SPELLS) do
-if inp.KeyCode == sp.keyCode then
-castSpell(sp.name)
-return
-end
-end
 if inp.KeyCode == Enum.KeyCode.B then
 toggleBook()
+end
+end)
+
+local COMMAND_TO_SPELL = {}
+for _, sp in ipairs(SPELLS) do
+COMMAND_TO_SPELL[string.lower(sp.cmd)] = sp.name
+end
+
+LocalPlayer.Chatted:Connect(function(message)
+if not isInDuel then return end
+if typeof(message) ~= "string" then return end
+local cmd = string.lower((message:match("^%s*(.-)%s*$") or ""))
+local spell = COMMAND_TO_SPELL[cmd]
+if spell then
+castSpell(spell)
 end
 end)
 --===========================================================
@@ -925,8 +1005,8 @@ local t2 = tw(ann2, {TextTransparency = 0}, 0.45, Enum.EasingStyle.Back)
 t2:Play()
 t2.Completed:Wait()
 annDivider.Visible = true
-annVS.Text = LocalPlayer.Name .. " ⚔ ".. opponentName
-oppLabel.Text = "⚔ " .. opponentName
+annVS.Text = safeText(LocalPlayer.Name .. " ⚔ " .. tostring(opponentName), 80)
+oppLabel.Text = safeText("⚔ " .. tostring(opponentName), 60)
 local t3 = tw(annVS, {TextTransparency = 0}, 0.4)
 t3:Play()
 t3.Completed:Wait()
@@ -972,9 +1052,11 @@ resSub.TextTransparency = 1
 -- REMOTES
 --===========================================================
 RE_BattleStart.OnClientEvent:Connect(function(opponentName)
+duelSessionActive = true
 task.spawn(playAnnouncement, opponentName)
 end)
 RE_BattleEnd.OnClientEvent:Connect(function(winnerName, isWinner)
+duelSessionActive = false
 isInDuel = false
 spellOnCD = {}
 hudWrap.Visible = false
@@ -1006,7 +1088,7 @@ sub = "Ganó " .. winnerName
 resWrap:FindFirstChildOfClass("UIStroke").Color = Color3.fromRGB(180,30,30)
 screenFlash(Color3.fromRGB(100,0,0), 0.4, 0.8)
 end
-resSub.Text = sub or ""
+resSub.Text = safeText(sub or "", 80)
 resWrap.Visible = true
 resWrap.BackgroundTransparency = 1
 resTxt.TextTransparency = 1
@@ -1060,6 +1142,26 @@ end
 end
 end)
 LocalPlayer.CharacterAdded:Connect(function()
+if duelSessionActive then
+isInDuel = true
+hudWrap.Visible = true
+hpWrap.Visible = true
+bookTriggerWrap.Visible = true
+cdWrap.Visible = true
+resWrap.Visible = false
+annBg.Visible = false
+blackScreen.BackgroundTransparency = 1
+closeBook()
+task.wait(0.35)
+local char = LocalPlayer.Character
+local hum = char and char:FindFirstChildOfClass("Humanoid")
+local wand = Backpack:FindFirstChild(WAND_NAME) or (char and char:FindFirstChild(WAND_NAME))
+if hum and wand and wand.Parent == Backpack then
+hum:EquipTool(wand)
+end
+return
+end
+
 isInDuel = false
 spellOnCD = {}
 hudWrap.Visible = false
