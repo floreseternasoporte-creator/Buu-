@@ -99,6 +99,17 @@ local SPELL_DATA = {
         kb = 38, kbUp = 28, kbDur = 1.5,
         sfx = SFX_CAST,
     },
+    ProtegoPorta = {
+        damage   = 0,   power  = 0, speed = 0, cdKey = "ProtegoPorta",
+        color    = Color3.fromRGB(170, 120, 70),
+        light    = Color3.fromRGB(220, 170, 110),
+        trailA   = Color3.fromRGB(200, 150, 95),
+        trailB   = Color3.fromRGB(110, 70, 45),
+        sparkCol = Color3.fromRGB(255, 220, 170),
+        projSize = Vector3.new(0.2, 0.2, 0.2),
+        kb = 0, kbUp = 0, kbDur = 0,
+        sfx = SFX_CAST,
+    },
     AvadaKedavra = {
         damage   = 999, power  = 999, speed = 100, cdKey = "AvadaKedavra",
         color    = Color3.fromRGB(0, 210, 20),
@@ -177,6 +188,7 @@ local playerSquare = {}
 local playerDuel   = {}
 local pendingCast  = {}
 local clashActive  = {}
+local activeShields = {}
 
 local playerKills  = {}
 local loadingKills = {}
@@ -602,6 +614,66 @@ local function spawnImpactFX(position, spData)
     Debris:AddItem(fx, 2)
 end
 
+local function createProtegoPortaShield(player, duelInfo)
+    if not player or not duelInfo then return end
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local old = activeShields[player]
+    if old and old.Parent then old:Destroy() end
+
+    local shield = Instance.new("Part")
+    shield.Name = "ProtegoPortaShield"
+    shield.Size = Vector3.new(9, 11, 1.2)
+    shield.Material = Enum.Material.WoodPlanks
+    shield.Color = Color3.fromRGB(112, 74, 50)
+    shield.Anchored = false
+    shield.CanCollide = true
+    shield.CanTouch = true
+    shield.CanQuery = true
+    shield.Massless = true
+    shield.CastShadow = true
+    shield:SetAttribute("ShieldOwnerUserId", player.UserId)
+    shield.Parent = workspace
+
+    shield.CFrame = hrp.CFrame * CFrame.new(0, 1.8, -5.6)
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = hrp; weld.Part1 = shield; weld.Parent = shield
+
+    local glow = Instance.new("PointLight")
+    glow.Color = Color3.fromRGB(255, 190, 130)
+    glow.Brightness = 5
+    glow.Range = 18
+    glow.Parent = shield
+
+    local seal = Instance.new("ParticleEmitter")
+    seal.Texture = "rbxassetid://243660364"
+    seal.Color = ColorSequence.new(Color3.fromRGB(250, 220, 170), Color3.fromRGB(180, 110, 70))
+    seal.LightEmission = 1
+    seal.Size = NumberSequence.new{
+        NumberSequenceKeypoint.new(0, 2.5),
+        NumberSequenceKeypoint.new(1, 0),
+    }
+    seal.Transparency = NumberSequence.new{
+        NumberSequenceKeypoint.new(0, 0.08),
+        NumberSequenceKeypoint.new(1, 1),
+    }
+    seal.Speed = NumberRange.new(0.2, 1.2)
+    seal.RotSpeed = NumberRange.new(-40, 40)
+    seal.Rate = 26
+    seal.Lifetime = NumberRange.new(0.25, 0.5)
+    seal.Parent = shield
+
+    activeShields[player] = shield
+    Debris:AddItem(shield, 3.5)
+    task.delay(3.6, function()
+        if activeShields[player] == shield then
+            activeShields[player] = nil
+        end
+    end)
+end
+
 --===========================================================
 -- GENERIC SPELL LAUNCHER
 --===========================================================
@@ -617,6 +689,13 @@ local function launchSpell(caster, duelInfo, spellName)
     local dir = (targetPos - startPos)
     if dir.Magnitude <= 0 then return end
     dir = dir.Unit
+
+    if spellName == "ProtegoPorta" then
+        createProtegoPortaShield(caster, duelInfo)
+        RE_SpellEffect:FireClient(caster, "ProtegoPorta_cast")
+        playSoundAt(cChar, spData.sfx or SFX_CAST, 1)
+        return
+    end
 
     -- Trigger wand burst
     if tipPart then
@@ -668,6 +747,40 @@ local function launchSpell(caster, duelInfo, spellName)
     if spellName == "Incendio" then
         local fire = Instance.new("Fire"); fire.Heat=15; fire.Size=4
         fire.Color=spData.color; fire.SecondaryColor=Color3.fromRGB(255,200,0); fire.Parent=proj
+
+        local flameTrail = Instance.new("ParticleEmitter")
+        flameTrail.Color = ColorSequence.new(Color3.fromRGB(255, 255, 140), Color3.fromRGB(255, 90, 0))
+        flameTrail.LightEmission = 1
+        flameTrail.Size = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.7),
+            NumberSequenceKeypoint.new(1, 0),
+        }
+        flameTrail.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.2),
+            NumberSequenceKeypoint.new(1, 1),
+        }
+        flameTrail.Speed = NumberRange.new(5, 14)
+        flameTrail.SpreadAngle = Vector2.new(110, 110)
+        flameTrail.Lifetime = NumberRange.new(0.15, 0.45)
+        flameTrail.Rate = 80
+        flameTrail.Parent = proj
+
+        local embers = Instance.new("ParticleEmitter")
+        embers.Color = ColorSequence.new(Color3.fromRGB(255, 230, 120), Color3.fromRGB(255, 140, 60))
+        embers.LightEmission = 1
+        embers.Size = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.18),
+            NumberSequenceKeypoint.new(1, 0),
+        }
+        embers.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.05),
+            NumberSequenceKeypoint.new(1, 1),
+        }
+        embers.Speed = NumberRange.new(10, 24)
+        embers.Acceleration = Vector3.new(0, 4, 0)
+        embers.Lifetime = NumberRange.new(0.2, 0.6)
+        embers.Rate = 60
+        embers.Parent = proj
     end
     -- Special: Crucio has extra energy balls effect
     if spellName == "Crucio" then
@@ -732,6 +845,16 @@ local function launchSpell(caster, duelInfo, spellName)
     proj.Touched:Connect(function(hit)
         if hitDone then return end
         if not hit or not hit.Parent then return end
+        if hit.Name == "ProtegoPortaShield" then
+            local ownerId = hit:GetAttribute("ShieldOwnerUserId")
+            if ownerId and opponent and ownerId == opponent.UserId then
+                hitDone = true
+                spawnImpactFX(proj.Position, SPELL_DATA.ProtegoPorta)
+                RE_SpellEffect:FireClient(opponent, "ProtegoPorta_block")
+                proj:Destroy()
+                return
+            end
+        end
         if hit.Parent == cChar then return end
         local hp = Players:GetPlayerFromCharacter(hit.Parent)
         if hp ~= opponent then return end
@@ -1342,6 +1465,9 @@ local function startDuel(squareIdx)
     end
 
     playerDuel[p1]=nil; playerDuel[p2]=nil; pendingCast[p1]=nil; pendingCast[p2]=nil
+    if activeShields[p1] and activeShields[p1].Parent then activeShields[p1]:Destroy() end
+    if activeShields[p2] and activeShields[p2].Parent then activeShields[p2]:Destroy() end
+    activeShields[p1] = nil; activeShields[p2] = nil
 
     task.delay(4, function()
         if overallWinner and overallWinner.Character then returnToLobby(overallWinner) end
@@ -1414,6 +1540,8 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
     removeFromSquare(player); saveKills(player)
+    if activeShields[player] and activeShields[player].Parent then activeShields[player]:Destroy() end
+    activeShields[player] = nil
     if playerDuel[player] then
         local info=playerDuel[player]; local opp=info.opponent
         playerDuel[player]=nil

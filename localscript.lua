@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Backpack = LocalPlayer:WaitForChild("Backpack")
@@ -101,6 +102,19 @@ bgCol = Color3.fromRGB(40, 13, 0),
 desc = "Conjuración de Fuego — Bola de llamas que envuelve al enemigo",
 power = "⭐⭐⭐",
 animType = "push",
+},
+{
+name = "ProtegoPorta",
+label = "PROTEGO PORTA",
+cmd = "/porta",
+key = "Y", keyCode = Enum.KeyCode.Y,
+cd = 11.0,
+color = Color3.fromRGB(170, 120, 70),
+glow = Color3.fromRGB(225, 180, 120),
+bgCol = Color3.fromRGB(35, 20, 8),
+desc = "Escudo de Madera — Invoca una puerta protectora frente al brujo",
+power = "🛡🛡🛡",
+animType = "guard",
 },
 {
 name = "AvadaKedavra",
@@ -276,6 +290,12 @@ if isVictim then cameraShake(0.25, 2.2) end
 elseif spellName == "Incendio_hit" then
 screenFlash(Color3.fromRGB(255,100,0), isVictim and 0.65 or 0.3, isVictim and 0.8 or 0.3)
 if isVictim then cameraShake(0.3, 0.8) end
+elseif spellName == "ProtegoPorta_cast" then
+screenFlash(Color3.fromRGB(210,160,100), 0.28, 0.45)
+cameraShake(0.2, 0.3)
+elseif spellName == "ProtegoPorta_block" then
+screenFlash(Color3.fromRGB(255,210,160), 0.34, 0.5)
+cameraShake(0.25, 0.35)
 elseif spellName == "ClashStart" then
 screenFlash(Color3.fromRGB(120,255,120), 0.4, 0.5)
 cameraShake(0.2, 4.0)
@@ -344,6 +364,13 @@ keyframes = {
 {t = 0.25, sh = CFrame.Angles(math.rad(-20), math.rad(5), 0)},
 {t = 0.40, sh = CFrame.Angles(0,0,0)},
 }
+elseif animType == "guard" then
+keyframes = {
+{t = 0.0, sh = CFrame.Angles(math.rad(-60), math.rad(-12), math.rad(-8))},
+{t = 0.10, sh = CFrame.Angles(math.rad(-98), math.rad(4), math.rad(12))},
+{t = 0.24, sh = CFrame.Angles(math.rad(-55), math.rad(2), math.rad(4))},
+{t = 0.42, sh = CFrame.Angles(0,0,0)},
+}
 elseif animType == "avada" then
 keyframes = {
 {t = 0.0, sh = CFrame.Angles(math.rad(-20), math.rad(-15), math.rad(-15))},
@@ -353,6 +380,11 @@ keyframes = {
 {t = 0.44, sh = CFrame.Angles(0,0,0)},
 }
 end
+task.delay(0.0, function()
+if shoulder and shoulder.Parent then
+shoulder.Transform = CFrame.Angles(math.rad(-35), 0, math.rad(8))
+end
+end)
 for _, kf in ipairs(keyframes) do
 task.delay(kf.t, function()
 if shoulder and shoulder.Parent then
@@ -608,6 +640,30 @@ else
 openBook()
 end
 end
+local function handCastFX(sp)
+local char = LocalPlayer.Character
+local hand = char and (char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm") or char:FindFirstChild("RightUpperArm"))
+if not hand then return end
+local att = Instance.new("Attachment")
+att.Parent = hand
+local pe = Instance.new("ParticleEmitter")
+pe.Color = ColorSequence.new(sp.color, sp.glow)
+pe.LightEmission = 1
+pe.Size = NumberSequence.new{
+NumberSequenceKeypoint.new(0, 0.28),
+NumberSequenceKeypoint.new(1, 0),
+}
+pe.Transparency = NumberSequence.new{
+NumberSequenceKeypoint.new(0, 0.05),
+NumberSequenceKeypoint.new(1, 1),
+}
+pe.Speed = NumberRange.new(5, 18)
+pe.SpreadAngle = Vector2.new(360, 360)
+pe.Lifetime = NumberRange.new(0.12, 0.28)
+pe.Parent = att
+pe:Emit(26)
+Debris:AddItem(att, 0.45)
+end
 local function castSpell(spellName)
 if not isInDuel then return end
 if spellOnCD[spellName] then return end
@@ -624,6 +680,7 @@ end
 end
 if not sp then return end
 animateWand(sp.animType)
+handCastFX(sp)
 spellOnCD[spellName] = true
 RE_CastSpell:FireServer(spellName)
 updateSpellCooldown(spellName, sp.cd)
