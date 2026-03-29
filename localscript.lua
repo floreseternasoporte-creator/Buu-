@@ -111,6 +111,7 @@ animType = "avada",
 }
 local WAND_NAME = "Varita Magica"
 local isInDuel = false
+local duelSessionActive = false
 local spellOnCD = {}
 --===========================================================
 -- UI HELPERS
@@ -238,17 +239,17 @@ end
 --===========================================================
 local function screenFX(spellName, isVictim)
 if spellName == "AvadaKill_victim" then
-screenFlash(Color3.fromRGB(0,200,20), 0.15, 1.2, "vignette")
-cameraShake(0.6, 1.5)
+screenFlash(Color3.fromRGB(0,220,40), 0.08, 1.45, "vignette")
+cameraShake(0.85, 1.9)
 task.spawn(function()
-for _ = 1, 5 do
-screenFlash(Color3.fromRGB(0,180,20), 0.25, 0.18)
-task.wait(0.22)
+for _ = 1, 7 do
+screenFlash(Color3.fromRGB(20,255,80), 0.2, 0.16)
+task.wait(0.17)
 end
 end)
 elseif spellName == "AvadaKill_cast" then
-screenFlash(Color3.fromRGB(0,255,30), 0.5, 0.6)
-cameraShake(0.15, 0.5)
+screenFlash(Color3.fromRGB(80,255,120), 0.42, 0.75)
+cameraShake(0.26, 0.8)
 elseif spellName == "Expelliarmus_hit" then
 screenFlash(Color3.fromRGB(255,50,50), isVictim and 0.55 or 0.25, isVictim and 0.6 or 0.3)
 if isVictim then cameraShake(0.3, 0.7) end
@@ -972,9 +973,11 @@ resSub.TextTransparency = 1
 -- REMOTES
 --===========================================================
 RE_BattleStart.OnClientEvent:Connect(function(opponentName)
+duelSessionActive = true
 task.spawn(playAnnouncement, opponentName)
 end)
 RE_BattleEnd.OnClientEvent:Connect(function(winnerName, isWinner)
+duelSessionActive = false
 isInDuel = false
 spellOnCD = {}
 hudWrap.Visible = false
@@ -1060,6 +1063,26 @@ end
 end
 end)
 LocalPlayer.CharacterAdded:Connect(function()
+if duelSessionActive then
+isInDuel = true
+hudWrap.Visible = true
+hpWrap.Visible = true
+bookTriggerWrap.Visible = true
+cdWrap.Visible = true
+resWrap.Visible = false
+annBg.Visible = false
+blackScreen.BackgroundTransparency = 1
+closeBook()
+task.wait(0.35)
+local char = LocalPlayer.Character
+local hum = char and char:FindFirstChildOfClass("Humanoid")
+local wand = Backpack:FindFirstChild(WAND_NAME) or (char and char:FindFirstChild(WAND_NAME))
+if hum and wand and wand.Parent == Backpack then
+hum:EquipTool(wand)
+end
+return
+end
+
 isInDuel = false
 spellOnCD = {}
 hudWrap.Visible = false
