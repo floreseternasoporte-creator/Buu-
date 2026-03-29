@@ -27,6 +27,7 @@ local SPELLS = {
 {
 name = "Expelliarmus",
 label = "EXPELLIARMUS",
+cmd = "/expelliarmus",
 key = "Q", keyCode = Enum.KeyCode.Q,
 cd = 3.0,
 color = Color3.fromRGB(255, 55, 55),
@@ -39,6 +40,7 @@ animType = "flick",
 {
 name = "Stupefy",
 label = "STUPEFY",
+cmd = "/stupefy",
 key = "E", keyCode = Enum.KeyCode.E,
 cd = 4.0,
 color = Color3.fromRGB(255, 75, 20),
@@ -51,6 +53,7 @@ animType = "thrust",
 {
 name = "Reducto",
 label = "REDUCTO",
+cmd = "/reducto",
 key = "R", keyCode = Enum.KeyCode.R,
 cd = 7.0,
 color = Color3.fromRGB(155, 20, 255),
@@ -63,6 +66,7 @@ animType = "sweep",
 {
 name = "Sectumsempra",
 label = "SECTUMSEMPRA",
+cmd = "/sectumsempra",
 key = "F", keyCode = Enum.KeyCode.F,
 cd = 9.0,
 color = Color3.fromRGB(210, 0, 28),
@@ -75,6 +79,7 @@ animType = "slash",
 {
 name = "Crucio",
 label = "CRUCIO",
+cmd = "/crucio",
 key = "G", keyCode = Enum.KeyCode.G,
 cd = 12.0,
 color = Color3.fromRGB(230, 215, 0),
@@ -87,6 +92,7 @@ animType = "twist",
 {
 name = "Incendio",
 label = "INCENDIO",
+cmd = "/incendio",
 key = "H", keyCode = Enum.KeyCode.H,
 cd = 8.0,
 color = Color3.fromRGB(255, 95, 0),
@@ -99,6 +105,7 @@ animType = "push",
 {
 name = "AvadaKedavra",
 label = "AVADA KEDAVRA",
+cmd = "/avada",
 key = "T", keyCode = Enum.KeyCode.T,
 cd = 30.0,
 color = Color3.fromRGB(0, 205, 18),
@@ -113,6 +120,7 @@ local WAND_NAME = "Varita Magica"
 local isInDuel = false
 local duelSessionActive = false
 local spellOnCD = {}
+local BOOK_CAST_ENABLED = false
 --===========================================================
 -- UI HELPERS
 --===========================================================
@@ -607,13 +615,6 @@ local char = LocalPlayer.Character
 if not char then return end
 local hum = char:FindFirstChildOfClass("Humanoid")
 if not hum then return end
-local wand = char:FindFirstChild(WAND_NAME) or Backpack:FindFirstChild(WAND_NAME)
-if wand and wand.Parent == Backpack then
-hum:EquipTool(wand)
-task.wait(0.08)
-end
-local equippedWand = char:FindFirstChild(WAND_NAME)
-if not equippedWand then return end
 local sp
 for _, s in ipairs(SPELLS) do
 if s.name == spellName then
@@ -674,7 +675,7 @@ local descLabel = Instance.new("TextLabel")
 descLabel.Size = UDim2.new(0.72,0,0.32,0)
 descLabel.Position = UDim2.new(0.06,0,0.56,0)
 descLabel.BackgroundTransparency = 1
-descLabel.Text = sp.desc
+descLabel.Text = sp.desc .. "  |  Comando: " .. string.upper(sp.cmd)
 descLabel.TextScaled = true
 descLabel.Font = Enum.Font.Antique
 descLabel.TextColor3 = Color3.fromRGB(200,175,120)
@@ -684,7 +685,7 @@ descLabel.Parent = entry
 local keyBadge = mF(entry, UDim2.new(0,36,0,24), UDim2.new(1,-52,0.5,-12), Color3.fromRGB(20,12,5), 0.1, 35)
 corner(keyBadge, 0.2)
 stroke(keyBadge, Color3.fromRGB(150,100,30), 1.5)
-local keyLabel = mL(keyBadge, "["..sp.key.."]", UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), Color3.fromRGB(220,185,80), Enum.Font.GothamBold, 36)
+local keyLabel = mL(keyBadge, "CMD", UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), Color3.fromRGB(220,185,80), Enum.Font.GothamBold, 36)
 local powerLabel = Instance.new("TextLabel")
 powerLabel.Size = UDim2.new(0.22,0,0.45,0)
 powerLabel.Position = UDim2.new(0.77,0,0.06,0)
@@ -715,7 +716,7 @@ tw(entry, {BackgroundTransparency = 0.08}, 0.12):Play()
 tw(nameLabel, {TextColor3 = sp.glow}, 0.12):Play()
 end
 end)
--- IMPORTANTE: se cierra el libro y luego se lanza el hechizo
+if BOOK_CAST_ENABLED then
 entry.Activated:Connect(function()
 task.spawn(function()
 if bookOpen then
@@ -725,6 +726,10 @@ end
 castSpell(sp.name)
 end)
 end)
+else
+entry.AutoButtonColor = false
+entry.Active = false
+end
 spellEntries[sp.name] = {
 entry = entry,
 nameLabel = nameLabel,
@@ -768,14 +773,23 @@ end)
 --===========================================================
 UserInputService.InputBegan:Connect(function(inp, gp)
 if gp then return end
-for _, sp in ipairs(SPELLS) do
-if inp.KeyCode == sp.keyCode then
-castSpell(sp.name)
-return
-end
-end
 if inp.KeyCode == Enum.KeyCode.B then
 toggleBook()
+end
+end)
+
+local COMMAND_TO_SPELL = {}
+for _, sp in ipairs(SPELLS) do
+COMMAND_TO_SPELL[string.lower(sp.cmd)] = sp.name
+end
+
+LocalPlayer.Chatted:Connect(function(message)
+if not isInDuel then return end
+if typeof(message) ~= "string" then return end
+local cmd = string.lower((message:match("^%s*(.-)%s*$") or ""))
+local spell = COMMAND_TO_SPELL[cmd]
+if spell then
+castSpell(spell)
 end
 end)
 --===========================================================

@@ -283,11 +283,17 @@ local function playSoundAt(char, id, vol)
     s.Parent=p; s:Play(); Debris:AddItem(s, 5)
 end
 
-local function getWandTip(char)
+local function getCastPart(char)
     if not char then return nil end
     local wand = char:FindFirstChild("Varita Magica")
-    if not wand then return nil end
-    return wand:FindFirstChild("WandTip")
+    if wand then
+        local tip = wand:FindFirstChild("WandTip")
+        if tip then return tip end
+    end
+    return char:FindFirstChild("RightHand")
+        or char:FindFirstChild("Right Lower Arm")
+        or char:FindFirstChild("Right Arm")
+        or char:FindFirstChild("RightUpperArm")
 end
 
 local function freezePlayer(player, frozen)
@@ -536,8 +542,6 @@ local function giveFighterSetup(player, houseName)
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then hum.MaxHealth = PLAYER_HEALTH; hum.Health = PLAYER_HEALTH end
     clearWand(player)
-    local bp = player:FindFirstChild("Backpack")
-    if bp then createWand(houseName).Parent = bp end
 end
 
 --===========================================================
@@ -607,7 +611,7 @@ local function launchSpell(caster, duelInfo, spellName)
     local cChar = caster.Character; local oChar = opponent and opponent.Character
     if not cChar or not oChar then return end
 
-    local tipPart = getWandTip(cChar)
+    local tipPart = getCastPart(cChar)
     local startPos = tipPart and tipPart.Position or (cChar.HumanoidRootPart.Position + Vector3.new(0,1.5,0))
     local targetPos = oChar.HumanoidRootPart.Position + Vector3.new(0,1.0,0)
     local dir = (targetPos - startPos)
@@ -764,7 +768,7 @@ end
 local function makeClashBeam(p1, p2, col)
     local c1 = p1.Character; local c2 = p2.Character
     if not c1 or not c2 then return nil end
-    local t1 = getWandTip(c1); local t2 = getWandTip(c2)
+    local t1 = getCastPart(c1); local t2 = getCastPart(c2)
     if not t1 or not t2 then return nil end
 
     local function ensureAtt(tip)
@@ -1398,7 +1402,7 @@ Players.PlayerAdded:Connect(function(player)
         if duelInfo then
             local arena = arenaData[duelInfo.arenaIdx]
             if arena then
-                freezePlayer(player, true)
+                freezePlayer(player, false)
                 hrp.CFrame = CFrame.new(arena.centerPos + Vector3.new(math.random(-4,4), 0, math.random(-4,4)))
                 return
             end
