@@ -1276,6 +1276,7 @@ local function refreshLeaderboard()
                 local okT,tR=pcall(function() return Players:GetUserThumbnailAsync(uid,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size100x100) end)
                 if okT and tR then thumb=tR end
             end
+            if #dName > 40 then dName = string.sub(dName, 1, 40) end
             row.name.Text=dName; row.avatar.Image=thumb
         else row.name.Text="—"; row.kills.Text="0"; row.avatar.Image="" end
     end

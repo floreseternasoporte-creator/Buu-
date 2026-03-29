@@ -193,6 +193,14 @@ l.ZIndex = zi or 10
 l.Parent = parent
 return l
 end
+local function safeText(value, maxLen)
+local txt = tostring(value or "")
+local lim = maxLen or 300
+if #txt >= lim then
+txt = string.sub(txt, 1, lim - 1)
+end
+return txt
+end
 --===========================================================
 -- BLACK SCREEN
 --===========================================================
@@ -507,7 +515,7 @@ local lInstr = Instance.new("TextLabel")
 lInstr.Size = UDim2.new(0.85,0,0.08,0)
 lInstr.Position = UDim2.new(0.075,0,0.68,0)
 lInstr.BackgroundTransparency = 1
-lInstr.Text = "Toca un hechizo para lanzarlo"
+lInstr.Text = "Consulta hechizos disponibles"
 lInstr.TextScaled = true
 lInstr.Font = Enum.Font.Antique
 lInstr.TextColor3 = Color3.fromRGB(70,35,10)
@@ -517,7 +525,7 @@ local lInstr2 = Instance.new("TextLabel")
 lInstr2.Size = UDim2.new(0.85,0,0.06,0)
 lInstr2.Position = UDim2.new(0.075,0,0.78,0)
 lInstr2.BackgroundTransparency = 1
-lInstr2.Text = "o usa las teclas Q E R F G H T"
+lInstr2.Text = "Lánzalos escribiendo comandos en el chat (/avada, /incendio...)"
 lInstr2.TextScaled = true
 lInstr2.Font = Enum.Font.Antique
 lInstr2.TextColor3 = Color3.fromRGB(90,50,15)
@@ -580,7 +588,7 @@ task.spawn(function()
 while spellOnCD[spellName] do
 local remaining = endT - tick()
 local pct = math.clamp(remaining / cd, 0, 1)
-entry.cdOvLabel.Text = string.format("%.1fs", math.max(0, remaining))
+entry.cdOvLabel.Text = safeText(string.format("%.1fs", math.max(0, remaining)), 20)
 tw(entry.cdBarFill, {Size = UDim2.new(pct,0,1,0)}, 0.12):Play()
 task.wait(0.1)
 end
@@ -997,8 +1005,8 @@ local t2 = tw(ann2, {TextTransparency = 0}, 0.45, Enum.EasingStyle.Back)
 t2:Play()
 t2.Completed:Wait()
 annDivider.Visible = true
-annVS.Text = LocalPlayer.Name .. " ⚔ ".. opponentName
-oppLabel.Text = "⚔ " .. opponentName
+annVS.Text = safeText(LocalPlayer.Name .. " ⚔ " .. tostring(opponentName), 80)
+oppLabel.Text = safeText("⚔ " .. tostring(opponentName), 60)
 local t3 = tw(annVS, {TextTransparency = 0}, 0.4)
 t3:Play()
 t3.Completed:Wait()
@@ -1080,7 +1088,7 @@ sub = "Ganó " .. winnerName
 resWrap:FindFirstChildOfClass("UIStroke").Color = Color3.fromRGB(180,30,30)
 screenFlash(Color3.fromRGB(100,0,0), 0.4, 0.8)
 end
-resSub.Text = sub or ""
+resSub.Text = safeText(sub or "", 80)
 resWrap.Visible = true
 resWrap.BackgroundTransparency = 1
 resTxt.TextTransparency = 1
