@@ -386,53 +386,48 @@ local function createWand(houseName)
         return m
     end
 
-    -- Diseño más fiel a una varita elegante y estilizada (sin deformarla)
-    local handle = wp("Handle", Vector3.new(0.18,1.0,0.18), "Reddish brown", Enum.Material.Wood)
-    handle.Color = Color3.fromRGB(84, 43, 27)
+    -- Varita de madera estilizada (más simple y natural)
+    local handle = wp("Handle", Vector3.new(0.20,1.0,0.20), "Reddish brown", Enum.Material.Wood)
+    handle.Color = Color3.fromRGB(86, 46, 30)
     addCylinder(handle, 1, 1, 1)
 
-    local carvA = wp("CarveA", Vector3.new(0.23,0.2,0.23), "Dark stone grey", Enum.Material.Metal)
-    carvA.Color = Color3.fromRGB(68, 47, 34)
-    addCylinder(carvA, 1.05, 1, 1.05)
+    local woodRingA = wp("WoodRingA", Vector3.new(0.24,0.16,0.24), "Reddish brown", Enum.Material.Wood)
+    woodRingA.Color = Color3.fromRGB(97, 55, 35)
+    addCylinder(woodRingA, 1.04, 1, 1.04)
 
-    local carvB = wp("CarveB", Vector3.new(0.22,0.18,0.22), "Dark stone grey", Enum.Material.Metal)
-    carvB.Color = Color3.fromRGB(73, 53, 37)
-    addCylinder(carvB, 1.05, 1, 1.05)
+    local woodRingB = wp("WoodRingB", Vector3.new(0.22,0.14,0.22), "Reddish brown", Enum.Material.Wood)
+    woodRingB.Color = Color3.fromRGB(104, 61, 39)
+    addCylinder(woodRingB, 1.03, 1, 1.03)
 
-    local carvC = wp("CarveC", Vector3.new(0.21,0.17,0.21), "Dark stone grey", Enum.Material.Metal)
-    carvC.Color = Color3.fromRGB(78, 57, 40)
-    addCylinder(carvC, 1.04, 1, 1.04)
-
-    local shaftLow = wp("ShaftLow", Vector3.new(0.14,0.78,0.14), "Reddish brown", Enum.Material.Wood)
-    shaftLow.Color = Color3.fromRGB(113, 62, 42)
+    local shaftLow = wp("ShaftLow", Vector3.new(0.15,0.80,0.15), "Reddish brown", Enum.Material.Wood)
+    shaftLow.Color = Color3.fromRGB(112, 66, 45)
     addCylinder(shaftLow, 1, 1, 1)
 
-    local shaftMid = wp("WandBody", Vector3.new(0.12,0.86,0.12), "Reddish brown", Enum.Material.Wood)
-    shaftMid.Color = Color3.fromRGB(125, 70, 48)
+    local shaftMid = wp("WandBody", Vector3.new(0.12,0.88,0.12), "Reddish brown", Enum.Material.Wood)
+    shaftMid.Color = Color3.fromRGB(124, 74, 52)
     addCylinder(shaftMid, 0.95, 1, 0.95)
 
     local shaftHigh = wp("ShaftHigh", Vector3.new(0.1,0.72,0.1), "Reddish brown", Enum.Material.Wood)
-    shaftHigh.Color = Color3.fromRGB(136, 79, 55)
+    shaftHigh.Color = Color3.fromRGB(138, 84, 59)
     addCylinder(shaftHigh, 0.9, 1, 0.9)
 
     local tip = wp("WandTip", Vector3.new(0.06,0.34,0.06), "Institutional white", Enum.Material.Neon)
     tip.Color = house.neon
     addCylinder(tip, 0.78, 1, 0.78)
 
-    local pommel = wp("Pommel", Vector3.new(0.26,0.26,0.26), "Dark stone grey", Enum.Material.Metal)
-    pommel.Color = Color3.fromRGB(66, 48, 34)
-    addCylinder(pommel, 1.08, 1, 1.08)
+    local pommel = wp("Pommel", Vector3.new(0.24,0.22,0.24), "Reddish brown", Enum.Material.Wood)
+    pommel.Color = Color3.fromRGB(79, 44, 29)
+    addCylinder(pommel, 1.02, 1, 1.02)
 
-    carvA.CFrame = handle.CFrame * CFrame.new(0,-0.36,0)
-    carvB.CFrame = handle.CFrame * CFrame.new(0,-0.14,0)
-    carvC.CFrame = handle.CFrame * CFrame.new(0,0.08,0)
+    woodRingA.CFrame = handle.CFrame * CFrame.new(0,-0.30,0)
+    woodRingB.CFrame = handle.CFrame * CFrame.new(0,-0.08,0)
     shaftLow.CFrame = handle.CFrame * CFrame.new(0,0.9,0)
     shaftMid.CFrame = shaftLow.CFrame * CFrame.new(0,0.82,0)
     shaftHigh.CFrame = shaftMid.CFrame * CFrame.new(0,0.78,0)
     tip.CFrame = shaftHigh.CFrame * CFrame.new(0,0.5,0)
-    pommel.CFrame = handle.CFrame * CFrame.new(0,-0.62,0)
+    pommel.CFrame = handle.CFrame * CFrame.new(0,-0.60,0)
 
-    for _, part in ipairs({carvA, carvB, carvC, shaftLow, shaftMid, shaftHigh, tip, pommel}) do
+    for _, part in ipairs({woodRingA, woodRingB, shaftLow, shaftMid, shaftHigh, tip, pommel}) do
         weld(handle, part)
     end
 
@@ -1089,8 +1084,8 @@ for i=1,4 do updateBoardForPad(i) end
 --===========================================================
 -- LEADERBOARD WALL
 --===========================================================
-local boardPart = makePart("LeaderboardBoard", Vector3.new(26,16,0.4), CFrame.new(0,23,LD/2-1.35), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-local boardGui = Instance.new("SurfaceGui"); boardGui.Face=Enum.NormalId.Front; boardGui.AlwaysOnTop=true; boardGui.LightInfluence=0; boardGui.Parent=boardPart
+local boardPart = makePart("LeaderboardBoard", Vector3.new(34,24,0.4), CFrame.new(0,26,LD/2-1.35), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
+local boardGui = Instance.new("SurfaceGui"); boardGui.Face=Enum.NormalId.Front; boardGui.AlwaysOnTop=false; boardGui.LightInfluence=1; boardGui.Parent=boardPart
 
 local boardRoot = Instance.new("Frame"); boardRoot.Size=UDim2.new(1,0,1,0)
 boardRoot.BackgroundColor3=Color3.fromRGB(8,6,18); boardRoot.BackgroundTransparency=0.05
@@ -1103,13 +1098,17 @@ bTitle.BackgroundTransparency=1; bTitle.Font=Enum.Font.GothamBlack; bTitle.TextS
 bTitle.TextColor3=Color3.fromRGB(255,215,0); bTitle.TextStrokeColor3=Color3.fromRGB(0,0,0); bTitle.TextStrokeTransparency=0.35
 bTitle.Text="⚡ MEJORES MAGOS ⚡"; bTitle.Parent=boardRoot
 
-local rowsFrame=Instance.new("Frame"); rowsFrame.Size=UDim2.new(0.96,0,0.82,0); rowsFrame.Position=UDim2.new(0.02,0,0.16,0)
+local rowsFrame=Instance.new("ScrollingFrame"); rowsFrame.Size=UDim2.new(0.96,0,0.82,0); rowsFrame.Position=UDim2.new(0.02,0,0.16,0)
 rowsFrame.BackgroundTransparency=1; rowsFrame.Parent=boardRoot
+rowsFrame.ScrollBarThickness = 10
+rowsFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 215, 0)
+rowsFrame.CanvasSize = UDim2.new(0,0,0,0)
+rowsFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 local rl=Instance.new("UIListLayout"); rl.Padding=UDim.new(0,5); rl.FillDirection=Enum.FillDirection.Vertical
 rl.HorizontalAlignment=Enum.HorizontalAlignment.Center; rl.Parent=rowsFrame
 
 local leaderboardRows={}
-for i=1,5 do
+for i=1,12 do
     local row=Instance.new("Frame"); row.Size=UDim2.new(1,0,0.18,0)
     row.BackgroundColor3=Color3.fromRGB(16,12,28); row.BackgroundTransparency=0.15
     row.BorderSizePixel=0; row.Parent=rowsFrame
@@ -1135,10 +1134,10 @@ for i=1,5 do
 end
 
 local function refreshLeaderboard()
-    local ok,pages=pcall(function() return KillsOrdered:GetSortedAsync(false,5) end)
-    if not ok or not pages then for i=1,5 do leaderboardRows[i].name.Text="—"; leaderboardRows[i].kills.Text="0"; leaderboardRows[i].avatar.Image="" end return end
+    local ok,pages=pcall(function() return KillsOrdered:GetSortedAsync(false,12) end)
+    if not ok or not pages then for i=1,12 do leaderboardRows[i].name.Text="—"; leaderboardRows[i].kills.Text="0"; leaderboardRows[i].avatar.Image="" end return end
     local page=pages:GetCurrentPage()
-    for i=1,5 do
+    for i=1,12 do
         local row=leaderboardRows[i]; local entry=page[i]
         if entry then
             local uid=tonumber(entry.key); local score=tonumber(entry.value) or 0

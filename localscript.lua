@@ -111,6 +111,7 @@ animType = "avada",
 }
 local WAND_NAME = "Varita Magica"
 local isInDuel = false
+local duelSessionActive = false
 local spellOnCD = {}
 --===========================================================
 -- UI HELPERS
@@ -972,9 +973,11 @@ resSub.TextTransparency = 1
 -- REMOTES
 --===========================================================
 RE_BattleStart.OnClientEvent:Connect(function(opponentName)
+duelSessionActive = true
 task.spawn(playAnnouncement, opponentName)
 end)
 RE_BattleEnd.OnClientEvent:Connect(function(winnerName, isWinner)
+duelSessionActive = false
 isInDuel = false
 spellOnCD = {}
 hudWrap.Visible = false
@@ -1060,6 +1063,26 @@ end
 end
 end)
 LocalPlayer.CharacterAdded:Connect(function()
+if duelSessionActive then
+isInDuel = true
+hudWrap.Visible = true
+hpWrap.Visible = true
+bookTriggerWrap.Visible = true
+cdWrap.Visible = true
+resWrap.Visible = false
+annBg.Visible = false
+blackScreen.BackgroundTransparency = 1
+closeBook()
+task.wait(0.35)
+local char = LocalPlayer.Character
+local hum = char and char:FindFirstChildOfClass("Humanoid")
+local wand = Backpack:FindFirstChild(WAND_NAME) or (char and char:FindFirstChild(WAND_NAME))
+if hum and wand and wand.Parent == Backpack then
+hum:EquipTool(wand)
+end
+return
+end
+
 isInDuel = false
 spellOnCD = {}
 hudWrap.Visible = false
