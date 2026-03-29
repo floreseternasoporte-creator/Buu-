@@ -22,7 +22,7 @@ local CLASH_WINDOW = 0.30
 local WINDUP       = 0.16
 
 -- SFX IDs
-local SFX_CAST   = "rbxassetid://139822052056984"
+local SFX_CAST   = "rbxassetid://109707041985625"
 local SFX_DEATH  = "rbxassetid://120717906835357"
 local SFX_HIT    = "rbxassetid://5982271945"
 local SFX_CLASH  = "rbxassetid://6518811702"
@@ -97,6 +97,17 @@ local SPELL_DATA = {
         sparkCol = Color3.fromRGB(255, 200, 80),
         projSize = Vector3.new(0.9, 0.9, 0.9),
         kb = 38, kbUp = 28, kbDur = 1.5,
+        sfx = SFX_CAST,
+    },
+    ProtegoPorta = {
+        damage   = 0,   power  = 0, speed = 0, cdKey = "ProtegoPorta",
+        color    = Color3.fromRGB(170, 120, 70),
+        light    = Color3.fromRGB(220, 170, 110),
+        trailA   = Color3.fromRGB(200, 150, 95),
+        trailB   = Color3.fromRGB(110, 70, 45),
+        sparkCol = Color3.fromRGB(255, 220, 170),
+        projSize = Vector3.new(0.2, 0.2, 0.2),
+        kb = 0, kbUp = 0, kbDur = 0,
         sfx = SFX_CAST,
     },
     AvadaKedavra = {
@@ -177,6 +188,7 @@ local playerSquare = {}
 local playerDuel   = {}
 local pendingCast  = {}
 local clashActive  = {}
+local activeShields = {}
 
 local playerKills  = {}
 local loadingKills = {}
@@ -283,11 +295,17 @@ local function playSoundAt(char, id, vol)
     s.Parent=p; s:Play(); Debris:AddItem(s, 5)
 end
 
-local function getWandTip(char)
+local function getCastPart(char)
     if not char then return nil end
     local wand = char:FindFirstChild("Varita Magica")
-    if not wand then return nil end
-    return wand:FindFirstChild("WandTip")
+    if wand then
+        local tip = wand:FindFirstChild("WandTip")
+        if tip then return tip end
+    end
+    return char:FindFirstChild("RightHand")
+        or char:FindFirstChild("Right Lower Arm")
+        or char:FindFirstChild("Right Arm")
+        or char:FindFirstChild("RightUpperArm")
 end
 
 local function freezePlayer(player, frozen)
@@ -357,62 +375,175 @@ local function createWand(houseName)
 
     local wand = Instance.new("Tool"); wand.Name = "Varita Magica"
     wand.RequiresHandle = true; wand.CanBeDropped = false
-    wand.GripPos = Vector3.new(0,-0.5,0); wand.GripForward = Vector3.new(0,0,1)
+    wand.GripPos = Vector3.new(0,-0.52,0); wand.GripForward = Vector3.new(0,0,1)
     wand.GripRight = Vector3.new(1,0,0); wand.GripUp = Vector3.new(0,1,0)
     wand:SetAttribute("HouseName", houseName or "Gryffindor")
 
     local function wp(name, size, col, mat)
-        local p = Instance.new("Part"); p.Name=name; p.Size=size
-        p.BrickColor=BrickColor.new(col); p.Material=mat or Enum.Material.WoodPlanks
-        p.CanCollide=false; p.Massless=true; p.CastShadow=false; p.Parent=wand
+        local p = Instance.new("Part")
+        p.Name = name; p.Size = size
+        p.BrickColor = BrickColor.new(col)
+        p.Material = mat or Enum.Material.SmoothPlastic
+        p.CanCollide = false; p.Massless = true; p.CastShadow = false
+        p.TopSurface = Enum.SurfaceType.Smooth
+        p.BottomSurface = Enum.SurfaceType.Smooth
+        p.Parent = wand
         return p
     end
 
-    local handle = wp("Handle",    Vector3.new(0.22,1.3,0.22),  "Reddish brown")
-    local body   = wp("WandBody",  Vector3.new(0.14,0.95,0.14), "Dark orange")
-    local tip    = wp("WandTip",   Vector3.new(0.10,0.28,0.10), "White")
-    tip.Material = Enum.Material.Neon; tip.Color = house.neon
+    local function weld(p0, p1)
+        local w = Instance.new("WeldConstraint")
+        w.Part0 = p0; w.Part1 = p1; w.Parent = p0
+    end
 
-    local function weld(p0, p1) local w=Instance.new("WeldConstraint"); w.Part0=p0; w.Part1=p1; w.Parent=p0 end
-    weld(handle, body); weld(handle, tip)
-    body.CFrame = handle.CFrame * CFrame.new(0,1.05,0)
-    tip.CFrame  = handle.CFrame * CFrame.new(0,1.55,0)
+    local function addCylinder(part, scaleX, scaleY, scaleZ)
+        local m = Instance.new("SpecialMesh")
+        m.MeshType = Enum.MeshType.Cylinder
+        m.Scale = Vector3.new(scaleX or 1, scaleY or 1, scaleZ or 1)
+        m.Parent = part
+        return m
+    end
+
+    -- Varita de madera estilizada (más simple y natural)
+    local handle = wp("Handle", Vector3.new(0.20,1.0,0.20), "Reddish brown", Enum.Material.Wood)
+    handle.Color = Color3.fromRGB(86, 46, 30)
+    addCylinder(handle, 1, 1, 1)
+
+    local woodRingA = wp("WoodRingA", Vector3.new(0.24,0.16,0.24), "Reddish brown", Enum.Material.Wood)
+    woodRingA.Color = Color3.fromRGB(97, 55, 35)
+    addCylinder(woodRingA, 1.04, 1, 1.04)
+
+    local woodRingB = wp("WoodRingB", Vector3.new(0.22,0.14,0.22), "Reddish brown", Enum.Material.Wood)
+    woodRingB.Color = Color3.fromRGB(104, 61, 39)
+    addCylinder(woodRingB, 1.03, 1, 1.03)
+
+    local shaftLow = wp("ShaftLow", Vector3.new(0.15,0.80,0.15), "Reddish brown", Enum.Material.Wood)
+    shaftLow.Color = Color3.fromRGB(112, 66, 45)
+    addCylinder(shaftLow, 1, 1, 1)
+
+    local shaftMid = wp("WandBody", Vector3.new(0.12,0.88,0.12), "Reddish brown", Enum.Material.Wood)
+    shaftMid.Color = Color3.fromRGB(124, 74, 52)
+    addCylinder(shaftMid, 0.95, 1, 0.95)
+
+    local shaftHigh = wp("ShaftHigh", Vector3.new(0.1,0.72,0.1), "Reddish brown", Enum.Material.Wood)
+    shaftHigh.Color = Color3.fromRGB(138, 84, 59)
+    addCylinder(shaftHigh, 0.9, 1, 0.9)
+
+    local tip = wp("WandTip", Vector3.new(0.06,0.34,0.06), "Institutional white", Enum.Material.Neon)
+    tip.Color = house.neon
+    addCylinder(tip, 0.78, 1, 0.78)
+
+    local pommel = wp("Pommel", Vector3.new(0.24,0.22,0.24), "Reddish brown", Enum.Material.Wood)
+    pommel.Color = Color3.fromRGB(79, 44, 29)
+    addCylinder(pommel, 1.02, 1, 1.02)
+
+    woodRingA.CFrame = handle.CFrame * CFrame.new(0,-0.30,0)
+    woodRingB.CFrame = handle.CFrame * CFrame.new(0,-0.08,0)
+    shaftLow.CFrame = handle.CFrame * CFrame.new(0,0.9,0)
+    shaftMid.CFrame = shaftLow.CFrame * CFrame.new(0,0.82,0)
+    shaftHigh.CFrame = shaftMid.CFrame * CFrame.new(0,0.78,0)
+    tip.CFrame = shaftHigh.CFrame * CFrame.new(0,0.5,0)
+    pommel.CFrame = handle.CFrame * CFrame.new(0,-0.60,0)
+
+    for _, part in ipairs({woodRingA, woodRingB, shaftLow, shaftMid, shaftHigh, tip, pommel}) do
+        weld(handle, part)
+    end
 
     -- TipAttachment for particles/effects
-    local att = Instance.new("Attachment"); att.Name="TipAttachment"; att.Position=Vector3.new(0,0.14,0); att.Parent=tip
+    local att = Instance.new("Attachment")
+    att.Name = "TipAttachment"; att.Position = Vector3.new(0,0.15,0); att.Parent = tip
 
-    -- Idle particle glow at tip
-    local em = Instance.new("ParticleEmitter")
-    em.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,120)),
-        ColorSequenceKeypoint.new(0.5, house.neon),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(80,200,255)),
+    -- Ambient magical aura
+    local aura = Instance.new("ParticleEmitter")
+    aura.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255,240,180)),
+        ColorSequenceKeypoint.new(0.45, house.neon),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(120,255,255)),
     }
-    em.LightEmission=1; em.Size=NumberSequence.new{NumberSequenceKeypoint.new(0,0.20),NumberSequenceKeypoint.new(0.5,0.10),NumberSequenceKeypoint.new(1,0)}
-    em.Transparency=NumberSequence.new{NumberSequenceKeypoint.new(0,0.1),NumberSequenceKeypoint.new(1,1)}
-    em.Speed=NumberRange.new(0.5,2.5); em.SpreadAngle=Vector2.new(35,35)
-    em.Lifetime=NumberRange.new(0.25,0.7); em.Rate=20; em.Parent=att
+    aura.LightEmission = 1
+    aura.Size = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0.16),
+        NumberSequenceKeypoint.new(0.55,0.08),
+        NumberSequenceKeypoint.new(1,0)
+    }
+    aura.Transparency = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0.05),
+        NumberSequenceKeypoint.new(1,1)
+    }
+    aura.Speed = NumberRange.new(0.4,2.2)
+    aura.SpreadAngle = Vector2.new(28,28)
+    aura.Lifetime = NumberRange.new(0.3,0.8)
+    aura.Rate = 22
+    aura.Parent = att
+
+    -- Arc sparks for high detail look
+    local sparks = Instance.new("ParticleEmitter")
+    sparks.Color = ColorSequence.new(house.neon, Color3.fromRGB(255,255,255))
+    sparks.LightEmission = 1
+    sparks.Size = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0.08),
+        NumberSequenceKeypoint.new(1,0)
+    }
+    sparks.Transparency = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0.1),
+        NumberSequenceKeypoint.new(1,1)
+    }
+    sparks.Speed = NumberRange.new(5,14)
+    sparks.Acceleration = Vector3.new(0,2,0)
+    sparks.Drag = 3
+    sparks.SpreadAngle = Vector2.new(360,360)
+    sparks.Lifetime = NumberRange.new(0.08,0.2)
+    sparks.Rate = 8
+    sparks.Parent = att
 
     -- Glow
-    local glow = Instance.new("PointLight"); glow.Brightness=4; glow.Color=house.neon; glow.Range=9; glow.Parent=tip
+    local glow = Instance.new("PointLight")
+    glow.Brightness = 4.6; glow.Color = house.neon; glow.Range = 10; glow.Shadows = true; glow.Parent = tip
 
     -- Cast burst emitter (enabled on cast)
-    local burst = Instance.new("ParticleEmitter"); burst.Name="CastBurst"
-    burst.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, house.neon), ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))}
-    burst.LightEmission=1
-    burst.Size = NumberSequence.new{NumberSequenceKeypoint.new(0,0.6),NumberSequenceKeypoint.new(1,0)}
-    burst.Transparency = NumberSequence.new{NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(1,1)}
-    burst.Speed=NumberRange.new(5,18); burst.SpreadAngle=Vector2.new(360,360)
-    burst.Lifetime=NumberRange.new(0.1,0.4); burst.Rate=0; burst.Parent=att
+    local burst = Instance.new("ParticleEmitter")
+    burst.Name = "CastBurst"
+    burst.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, house.neon),
+        ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255,255,255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(120,255,180)),
+    }
+    burst.LightEmission = 1
+    burst.Size = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0.75),
+        NumberSequenceKeypoint.new(0.5,0.28),
+        NumberSequenceKeypoint.new(1,0)
+    }
+    burst.Transparency = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0),
+        NumberSequenceKeypoint.new(1,1)
+    }
+    burst.Speed = NumberRange.new(9,24)
+    burst.SpreadAngle = Vector2.new(360,360)
+    burst.Lifetime = NumberRange.new(0.12,0.45)
+    burst.Rate = 0
+    burst.Parent = att
 
     -- Trail on tip
-    local a0 = Instance.new("Attachment"); a0.Position=Vector3.new(0,0.14,0); a0.Parent=tip
-    local a1 = Instance.new("Attachment"); a1.Position=Vector3.new(0,-0.14,0); a1.Parent=tip
-    local tr = Instance.new("Trail"); tr.Attachment0=a0; tr.Attachment1=a1
-    tr.Lifetime=0.18; tr.LightEmission=1
-    tr.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, house.neon), ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))}
-    tr.Transparency = NumberSequence.new{NumberSequenceKeypoint.new(0,0.1), NumberSequenceKeypoint.new(1,1)}
-    tr.WidthScale = NumberSequence.new{NumberSequenceKeypoint.new(0,1), NumberSequenceKeypoint.new(1,0)}
+    local a0 = Instance.new("Attachment"); a0.Position = Vector3.new(0,0.16,0); a0.Parent = tip
+    local a1 = Instance.new("Attachment"); a1.Position = Vector3.new(0,-0.16,0); a1.Parent = tip
+    local tr = Instance.new("Trail")
+    tr.Attachment0 = a0; tr.Attachment1 = a1
+    tr.Lifetime = 0.2; tr.LightEmission = 1
+    tr.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, house.neon),
+        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(255,255,255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(90,255,170)),
+    }
+    tr.Transparency = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0.05),
+        NumberSequenceKeypoint.new(1,1)
+    }
+    tr.WidthScale = NumberSequence.new{
+        NumberSequenceKeypoint.new(0,0.95),
+        NumberSequenceKeypoint.new(0.5,0.62),
+        NumberSequenceKeypoint.new(1,0)
+    }
     tr.Parent = tip
 
     return wand
@@ -423,8 +554,6 @@ local function giveFighterSetup(player, houseName)
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then hum.MaxHealth = PLAYER_HEALTH; hum.Health = PLAYER_HEALTH end
     clearWand(player)
-    local bp = player:FindFirstChild("Backpack")
-    if bp then createWand(houseName).Parent = bp end
 end
 
 --===========================================================
@@ -485,6 +614,66 @@ local function spawnImpactFX(position, spData)
     Debris:AddItem(fx, 2)
 end
 
+local function createProtegoPortaShield(player, duelInfo)
+    if not player or not duelInfo then return end
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local old = activeShields[player]
+    if old and old.Parent then old:Destroy() end
+
+    local shield = Instance.new("Part")
+    shield.Name = "ProtegoPortaShield"
+    shield.Size = Vector3.new(9, 11, 1.2)
+    shield.Material = Enum.Material.WoodPlanks
+    shield.Color = Color3.fromRGB(112, 74, 50)
+    shield.Anchored = false
+    shield.CanCollide = true
+    shield.CanTouch = true
+    shield.CanQuery = true
+    shield.Massless = true
+    shield.CastShadow = true
+    shield:SetAttribute("ShieldOwnerUserId", player.UserId)
+    shield.Parent = workspace
+
+    shield.CFrame = hrp.CFrame * CFrame.new(0, 1.8, -5.6)
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = hrp; weld.Part1 = shield; weld.Parent = shield
+
+    local glow = Instance.new("PointLight")
+    glow.Color = Color3.fromRGB(255, 190, 130)
+    glow.Brightness = 5
+    glow.Range = 18
+    glow.Parent = shield
+
+    local seal = Instance.new("ParticleEmitter")
+    seal.Texture = "rbxassetid://243660364"
+    seal.Color = ColorSequence.new(Color3.fromRGB(250, 220, 170), Color3.fromRGB(180, 110, 70))
+    seal.LightEmission = 1
+    seal.Size = NumberSequence.new{
+        NumberSequenceKeypoint.new(0, 2.5),
+        NumberSequenceKeypoint.new(1, 0),
+    }
+    seal.Transparency = NumberSequence.new{
+        NumberSequenceKeypoint.new(0, 0.08),
+        NumberSequenceKeypoint.new(1, 1),
+    }
+    seal.Speed = NumberRange.new(0.2, 1.2)
+    seal.RotSpeed = NumberRange.new(-40, 40)
+    seal.Rate = 26
+    seal.Lifetime = NumberRange.new(0.25, 0.5)
+    seal.Parent = shield
+
+    activeShields[player] = shield
+    Debris:AddItem(shield, 3.5)
+    task.delay(3.6, function()
+        if activeShields[player] == shield then
+            activeShields[player] = nil
+        end
+    end)
+end
+
 --===========================================================
 -- GENERIC SPELL LAUNCHER
 --===========================================================
@@ -494,12 +683,19 @@ local function launchSpell(caster, duelInfo, spellName)
     local cChar = caster.Character; local oChar = opponent and opponent.Character
     if not cChar or not oChar then return end
 
-    local tipPart = getWandTip(cChar)
+    local tipPart = getCastPart(cChar)
     local startPos = tipPart and tipPart.Position or (cChar.HumanoidRootPart.Position + Vector3.new(0,1.5,0))
     local targetPos = oChar.HumanoidRootPart.Position + Vector3.new(0,1.0,0)
     local dir = (targetPos - startPos)
     if dir.Magnitude <= 0 then return end
     dir = dir.Unit
+
+    if spellName == "ProtegoPorta" then
+        createProtegoPortaShield(caster, duelInfo)
+        RE_SpellEffect:FireClient(caster, "ProtegoPorta_cast")
+        playSoundAt(cChar, spData.sfx or SFX_CAST, 1)
+        return
+    end
 
     -- Trigger wand burst
     if tipPart then
@@ -531,7 +727,7 @@ local function launchSpell(caster, duelInfo, spellName)
     local at0 = Instance.new("Attachment"); at0.Position=Vector3.new(0,0.1,0); at0.Parent=proj
     local at1 = Instance.new("Attachment"); at1.Position=Vector3.new(0,-0.1,0); at1.Parent=proj
     local trail = Instance.new("Trail"); trail.Attachment0=at0; trail.Attachment1=at1
-    trail.Lifetime = (spellName == "AvadaKedavra") and 0.45 or 0.28
+    trail.Lifetime = (spellName == "AvadaKedavra") and 0.65 or 0.28
     trail.LightEmission = 1
     trail.Color = ColorSequence.new{ColorSequenceKeypoint.new(0,spData.trailA), ColorSequenceKeypoint.new(1,spData.trailB)}
     trail.Transparency = NumberSequence.new{NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(1,1)}
@@ -544,13 +740,47 @@ local function launchSpell(caster, duelInfo, spellName)
     pe.LightEmission=1
     pe.Size=NumberSequence.new{NumberSequenceKeypoint.new(0,0.22),NumberSequenceKeypoint.new(1,0)}
     pe.Speed=NumberRange.new(3,9); pe.Lifetime=NumberRange.new(0.08,0.28)
-    pe.Rate = (spellName == "AvadaKedavra") and 60 or 30
+    pe.Rate = (spellName == "AvadaKedavra") and 140 or 30
     pe.SpreadAngle=Vector2.new(180,180); pe.Parent=proj
 
     -- Special: Incendio has Fire
     if spellName == "Incendio" then
         local fire = Instance.new("Fire"); fire.Heat=15; fire.Size=4
         fire.Color=spData.color; fire.SecondaryColor=Color3.fromRGB(255,200,0); fire.Parent=proj
+
+        local flameTrail = Instance.new("ParticleEmitter")
+        flameTrail.Color = ColorSequence.new(Color3.fromRGB(255, 255, 140), Color3.fromRGB(255, 90, 0))
+        flameTrail.LightEmission = 1
+        flameTrail.Size = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.7),
+            NumberSequenceKeypoint.new(1, 0),
+        }
+        flameTrail.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.2),
+            NumberSequenceKeypoint.new(1, 1),
+        }
+        flameTrail.Speed = NumberRange.new(5, 14)
+        flameTrail.SpreadAngle = Vector2.new(110, 110)
+        flameTrail.Lifetime = NumberRange.new(0.15, 0.45)
+        flameTrail.Rate = 80
+        flameTrail.Parent = proj
+
+        local embers = Instance.new("ParticleEmitter")
+        embers.Color = ColorSequence.new(Color3.fromRGB(255, 230, 120), Color3.fromRGB(255, 140, 60))
+        embers.LightEmission = 1
+        embers.Size = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.18),
+            NumberSequenceKeypoint.new(1, 0),
+        }
+        embers.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.05),
+            NumberSequenceKeypoint.new(1, 1),
+        }
+        embers.Speed = NumberRange.new(10, 24)
+        embers.Acceleration = Vector3.new(0, 4, 0)
+        embers.Lifetime = NumberRange.new(0.2, 0.6)
+        embers.Rate = 60
+        embers.Parent = proj
     end
     -- Special: Crucio has extra energy balls effect
     if spellName == "Crucio" then
@@ -559,6 +789,51 @@ local function launchSpell(caster, duelInfo, spellName)
         pe2.Size=NumberSequence.new{NumberSequenceKeypoint.new(0,0.35),NumberSequenceKeypoint.new(1,0)}
         pe2.Speed=NumberRange.new(8,20); pe2.Lifetime=NumberRange.new(0.15,0.45)
         pe2.Rate=25; pe2.SpreadAngle=Vector2.new(360,360); pe2.Parent=proj
+    end
+    if spellName == "AvadaKedavra" then
+        local smoke = Instance.new("ParticleEmitter")
+        smoke.Color = ColorSequence.new(Color3.fromRGB(20,120,30), Color3.fromRGB(180,255,190))
+        smoke.LightEmission = 0.8
+        smoke.Size = NumberSequence.new{
+            NumberSequenceKeypoint.new(0,0.5),
+            NumberSequenceKeypoint.new(0.6,0.9),
+            NumberSequenceKeypoint.new(1,0)
+        }
+        smoke.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0,0.2),
+            NumberSequenceKeypoint.new(1,1)
+        }
+        smoke.Speed = NumberRange.new(2,6)
+        smoke.Drag = 4
+        smoke.Rate = 70
+        smoke.Lifetime = NumberRange.new(0.2,0.5)
+        smoke.Parent = proj
+
+        local ring = Instance.new("ParticleEmitter")
+        ring.Color = ColorSequence.new(Color3.fromRGB(140,255,140), Color3.fromRGB(0,255,30))
+        ring.LightEmission = 1
+        ring.Texture = "rbxassetid://243660364"
+        ring.Size = NumberSequence.new{
+            NumberSequenceKeypoint.new(0,1.4),
+            NumberSequenceKeypoint.new(1,0)
+        }
+        ring.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0,0.12),
+            NumberSequenceKeypoint.new(1,1)
+        }
+        ring.Speed = NumberRange.new(0.5,1.2)
+        ring.RotSpeed = NumberRange.new(-120,120)
+        ring.Rate = 20
+        ring.Lifetime = NumberRange.new(0.1,0.22)
+        ring.Parent = proj
+
+        local hum = Instance.new("Sound")
+        hum.SoundId = "rbxassetid://9113420771"
+        hum.Volume = 0.6
+        hum.RollOffMaxDistance = 80
+        hum.Parent = proj
+        hum:Play()
+        Debris:AddItem(hum, 2)
     end
 
     -- BodyVelocity
@@ -570,6 +845,16 @@ local function launchSpell(caster, duelInfo, spellName)
     proj.Touched:Connect(function(hit)
         if hitDone then return end
         if not hit or not hit.Parent then return end
+        if hit.Name == "ProtegoPortaShield" then
+            local ownerId = hit:GetAttribute("ShieldOwnerUserId")
+            if ownerId and opponent and ownerId == opponent.UserId then
+                hitDone = true
+                spawnImpactFX(proj.Position, SPELL_DATA.ProtegoPorta)
+                RE_SpellEffect:FireClient(opponent, "ProtegoPorta_block")
+                proj:Destroy()
+                return
+            end
+        end
         if hit.Parent == cChar then return end
         local hp = Players:GetPlayerFromCharacter(hit.Parent)
         if hp ~= opponent then return end
@@ -606,7 +891,7 @@ end
 local function makeClashBeam(p1, p2, col)
     local c1 = p1.Character; local c2 = p2.Character
     if not c1 or not c2 then return nil end
-    local t1 = getWandTip(c1); local t2 = getWandTip(c2)
+    local t1 = getCastPart(c1); local t2 = getCastPart(c2)
     if not t1 or not t2 then return nil end
 
     local function ensureAtt(tip)
@@ -926,8 +1211,8 @@ for i=1,4 do updateBoardForPad(i) end
 --===========================================================
 -- LEADERBOARD WALL
 --===========================================================
-local boardPart = makePart("LeaderboardBoard", Vector3.new(26,16,0.4), CFrame.new(0,23,LD/2-1.35), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
-local boardGui = Instance.new("SurfaceGui"); boardGui.Face=Enum.NormalId.Front; boardGui.AlwaysOnTop=true; boardGui.LightInfluence=0; boardGui.Parent=boardPart
+local boardPart = makePart("LeaderboardBoard", Vector3.new(34,24,0.4), CFrame.new(0,26,LD/2-1.35), "Dark stone grey", Enum.Material.SmoothPlastic, LobbyModel, false, true)
+local boardGui = Instance.new("SurfaceGui"); boardGui.Face=Enum.NormalId.Front; boardGui.AlwaysOnTop=false; boardGui.LightInfluence=1; boardGui.Parent=boardPart
 
 local boardRoot = Instance.new("Frame"); boardRoot.Size=UDim2.new(1,0,1,0)
 boardRoot.BackgroundColor3=Color3.fromRGB(8,6,18); boardRoot.BackgroundTransparency=0.05
@@ -940,13 +1225,17 @@ bTitle.BackgroundTransparency=1; bTitle.Font=Enum.Font.GothamBlack; bTitle.TextS
 bTitle.TextColor3=Color3.fromRGB(255,215,0); bTitle.TextStrokeColor3=Color3.fromRGB(0,0,0); bTitle.TextStrokeTransparency=0.35
 bTitle.Text="⚡ MEJORES MAGOS ⚡"; bTitle.Parent=boardRoot
 
-local rowsFrame=Instance.new("Frame"); rowsFrame.Size=UDim2.new(0.96,0,0.82,0); rowsFrame.Position=UDim2.new(0.02,0,0.16,0)
+local rowsFrame=Instance.new("ScrollingFrame"); rowsFrame.Size=UDim2.new(0.96,0,0.82,0); rowsFrame.Position=UDim2.new(0.02,0,0.16,0)
 rowsFrame.BackgroundTransparency=1; rowsFrame.Parent=boardRoot
+rowsFrame.ScrollBarThickness = 10
+rowsFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 215, 0)
+rowsFrame.CanvasSize = UDim2.new(0,0,0,0)
+rowsFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 local rl=Instance.new("UIListLayout"); rl.Padding=UDim.new(0,5); rl.FillDirection=Enum.FillDirection.Vertical
 rl.HorizontalAlignment=Enum.HorizontalAlignment.Center; rl.Parent=rowsFrame
 
 local leaderboardRows={}
-for i=1,5 do
+for i=1,12 do
     local row=Instance.new("Frame"); row.Size=UDim2.new(1,0,0.18,0)
     row.BackgroundColor3=Color3.fromRGB(16,12,28); row.BackgroundTransparency=0.15
     row.BorderSizePixel=0; row.Parent=rowsFrame
@@ -972,10 +1261,10 @@ for i=1,5 do
 end
 
 local function refreshLeaderboard()
-    local ok,pages=pcall(function() return KillsOrdered:GetSortedAsync(false,5) end)
-    if not ok or not pages then for i=1,5 do leaderboardRows[i].name.Text="—"; leaderboardRows[i].kills.Text="0"; leaderboardRows[i].avatar.Image="" end return end
+    local ok,pages=pcall(function() return KillsOrdered:GetSortedAsync(false,12) end)
+    if not ok or not pages then for i=1,12 do leaderboardRows[i].name.Text="—"; leaderboardRows[i].kills.Text="0"; leaderboardRows[i].avatar.Image="" end return end
     local page=pages:GetCurrentPage()
-    for i=1,5 do
+    for i=1,12 do
         local row=leaderboardRows[i]; local entry=page[i]
         if entry then
             local uid=tonumber(entry.key); local score=tonumber(entry.value) or 0
@@ -1001,7 +1290,7 @@ local function buildArena(idx)
     local center=ARENA_CENTERS[idx]
     local model=Instance.new("Model"); model.Name="Arena_"..idx; model.Parent=workspace
 
-    local AW,AD,AH=36,88,35
+    local AW,AD,AH=40,132,38
     local house=HOUSES[idx]
 
     local function ap(name,size,off,color,mat,cc)
@@ -1049,8 +1338,8 @@ local function buildArena(idx)
     }) do addWallTorch(center+tp, model) end
 
     arenaData[idx] = {
-        spawnA   = center+Vector3.new(-10,3.5,-22),
-        spawnB   = center+Vector3.new( 10,3.5, 22),
+        spawnA   = center+Vector3.new(-12,3.8,-36),
+        spawnB   = center+Vector3.new( 12,3.8, 36),
         centerPos= center+Vector3.new(0,3.5,0),
     }
 end
@@ -1176,6 +1465,9 @@ local function startDuel(squareIdx)
     end
 
     playerDuel[p1]=nil; playerDuel[p2]=nil; pendingCast[p1]=nil; pendingCast[p2]=nil
+    if activeShields[p1] and activeShields[p1].Parent then activeShields[p1]:Destroy() end
+    if activeShields[p2] and activeShields[p2].Parent then activeShields[p2]:Destroy() end
+    activeShields[p1] = nil; activeShields[p2] = nil
 
     task.delay(4, function()
         if overallWinner and overallWinner.Character then returnToLobby(overallWinner) end
@@ -1230,14 +1522,26 @@ Players.PlayerAdded:Connect(function(player)
     local kills=Instance.new("IntValue"); kills.Name="Kills"; kills.Value=0; kills.Parent=ls
     loadKills(player)
     player.CharacterAdded:Connect(function(char)
-        removeFromSquare(player); playerDuel[player]=nil; pendingCast[player]=nil
+        removeFromSquare(player); pendingCast[player]=nil
         local hrp=char:WaitForChild("HumanoidRootPart"); task.wait(0.15)
+        local duelInfo = playerDuel[player]
+        if duelInfo then
+            local arena = arenaData[duelInfo.arenaIdx]
+            if arena then
+                freezePlayer(player, false)
+                hrp.CFrame = CFrame.new(arena.centerPos + Vector3.new(math.random(-4,4), 0, math.random(-4,4)))
+                return
+            end
+        end
+        playerDuel[player]=nil
         hrp.CFrame=CFrame.new(LOBBY_SPAWN+Vector3.new(math.random(-8,8),0,math.random(-8,8)))
     end)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
     removeFromSquare(player); saveKills(player)
+    if activeShields[player] and activeShields[player].Parent then activeShields[player]:Destroy() end
+    activeShields[player] = nil
     if playerDuel[player] then
         local info=playerDuel[player]; local opp=info.opponent
         playerDuel[player]=nil
