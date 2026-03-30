@@ -145,6 +145,7 @@ sg.Name = "DuelUI"
 sg.ResetOnSpawn = false
 sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 sg.IgnoreGuiInset = true
+sg.Enabled = false
 sg.Parent = PlayerGui
 local function tw(obj, props, t, sty, dir)
 return TweenService:Create(obj, TweenInfo.new(t or 0.3, sty or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), props)
@@ -193,6 +194,10 @@ l.ZIndex = zi or 10
 l.Parent = parent
 return l
 end
+local function setDuelUIEnabled(enabled)
+sg.Enabled = enabled and true or false
+end
+
 local function safeText(value, maxLen)
 local txt = tostring(value or "")
 local lim = maxLen or 300
@@ -1053,11 +1058,13 @@ resSub.TextTransparency = 1
 --===========================================================
 RE_BattleStart.OnClientEvent:Connect(function(opponentName)
 duelSessionActive = true
+setDuelUIEnabled(true)
 task.spawn(playAnnouncement, opponentName)
 end)
 RE_BattleEnd.OnClientEvent:Connect(function(winnerName, isWinner)
 duelSessionActive = false
 isInDuel = false
+setDuelUIEnabled(true)
 spellOnCD = {}
 hudWrap.Visible = false
 hpWrap.Visible = false
@@ -1103,6 +1110,7 @@ tw(resTxt, {TextTransparency = 1}, 0.45):Play()
 tw(resSub, {TextTransparency = 1}, 0.45):Play()
 task.wait(0.5)
 resWrap.Visible = false
+setDuelUIEnabled(false)
 end)
 RE_Countdown.OnClientEvent:Connect(function(n)
 showCountdown(n)
@@ -1143,6 +1151,7 @@ end
 end)
 LocalPlayer.CharacterAdded:Connect(function()
 if duelSessionActive then
+setDuelUIEnabled(true)
 isInDuel = true
 hudWrap.Visible = true
 hpWrap.Visible = true
@@ -1163,6 +1172,7 @@ return
 end
 
 isInDuel = false
+setDuelUIEnabled(false)
 spellOnCD = {}
 hudWrap.Visible = false
 hpWrap.Visible = false
